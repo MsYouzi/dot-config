@@ -69,9 +69,14 @@ config.font_rules = {
 -- use_fancy_tab_bar=true gives a taller, native-style tab bar (vs the
 -- one-cell-tall retro mode). Still respects format-tab-title below, so
 -- the pill icons + per-process Nerd Font glyphs keep working.
+--
+-- IMPORTANT: fancy mode is only supported at the TOP of the window. Setting
+-- tab_bar_at_bottom=true while fancy is on silently downgrades the bar to
+-- retro mode (one cell tall) and makes window_frame.font_size a no-op.
+-- We deliberately put the bar at the top so the height bump below applies.
 config.use_fancy_tab_bar = true
 config.enable_tab_bar = true
-config.tab_bar_at_bottom = true
+config.tab_bar_at_bottom = false
 config.hide_tab_bar_if_only_one_tab = false
 config.tab_max_width = 40
 config.show_new_tab_button_in_tab_bar = false
