@@ -16,45 +16,27 @@ creates symlinks into `$HOME` (and `~/.oh-my-zsh/custom/`).
     from C-c/d/z, doesn't clash with readline, and modern macOS disables
     the legacy C-q XON flow control), mouse on, top status bar, vim-style
     splits (`prefix + |` / `prefix + -`), 1-indexed windows, OSC 52
-    clipboard, TPM + tmux-sensible/yank/resurrect/continuum). Bootstrap
+    clipboard, TPM + tmux-sensible/yank/resurrect/continuum). Also
+    **scrubs stale terminal-identity env** at server start
+    (`set-environment -gu TERMINFO TERMINFO_DIRS TERMCAP TERM_PROGRAM
+    TERM_PROGRAM_VERSION` + `set -g COLORTERM truecolor`) so a long-lived
+    tmux server that was once started from an uninstalled terminal
+    (e.g., Ghostty pointed `$TERMINFO` at its bundle dir) doesn't keep
+    failing the `default-terminal "tmux-256color"` lookup forever and
+    silently degrade to `xterm-color` (which makes Copilot CLI lose its
+    truecolor input panel). **Recovery for an already-poisoned server**:
+    close work + save state via `prefix + Ctrl-s`, then `tmux kill-server`
+    from a non-tmux shell — next launch picks up the clean env. Bootstrap
     of TPM and plugins is automatic on first tmux start (cloned by the
     `if test ! -d tpm` block, then plugin install runs after the `run
     '~/.tmux/plugins/tpm/tpm'` init line because that line is what sets
     `TMUX_PLUGIN_MANAGER_PATH` in tmux's env). `install.sh` ALSO bootstraps
     TPM + plugins for the install-script path. Validate locally with
     `tmux -f .tmux.conf -L _v new-session -d -s _v ; tmux -L _v kill-server`.
-- `<repo>/alacritty/<file>` — files linked to `$HOME/.config/alacritty/<file>`.
-  The destination directory is created by `install.sh` if missing
-  (Alacritty itself only creates it on first launch). Currently:
-  - `alacritty.toml` — primary terminal (`v0.5.0`+). `colors = Gruvbox Dark
-    Hard` (matches wezterm GruvboxDarkHard exactly), `font.normal.family
-    = Rec Mono St.Helens` `style = Regular` (Alacritty has no variable-font
-    weight axis support, so we can't replicate WezTerm's wght=500 — only
-    Regular static is shipped by `font-recursive`; cosmetic difference at
-    14pt is mild), `font.size = 14`, `font.offset.y = 2` (≈ WezTerm
-    `line_height = 1.1`), `window.padding = {x=8,y=8}`,
-    `window.option_as_alt = "OnlyLeft"` (left-Option as Alt for tmux/shell;
-    right-Option preserved for typing accents), `window.decorations =
-    "Full"` (Alacritty has NO native tabs by design — tmux is the tab
-    manager), `[terminal.shell] program = "/bin/zsh" args = ["-l"]`,
-    `[terminal] osc52 = "CopyPaste"` (cross-machine clipboard via SSH'd
-    tmux/vim), `[bell] duration = 0`, `[mouse] hide_when_typing = true`,
-    `[scrolling] history = 100000`, `[general] live_config_reload = true`.
-    Keybinds add only `Cmd+T = CreateNewWindow` (no native tabs) and
-    `Cmd+0 = ResetFontSize`; tabs/splits/pane-nav are entirely tmux's
-    responsibility. Cross-platform notes in the file header explain how
-    Linux/Windows users should symlink/import the file; Windows users
-    edit `[terminal.shell] program` to `pwsh.exe` or use a sibling
-    `local.toml` referenced via `[general] import`. Validate without
-    launching the GUI with
-    `alacritty migrate --dry-run --config-file alacritty/alacritty.toml`.
-- `<repo>/wezterm/<file>` — **fallback terminal config; NOT auto-linked**.
-  Kept as the supported alternative to Alacritty for users who want native
-  tabs/splits without tmux, or who need WezTerm's variable-font weight axis
-  (Alacritty has no equivalent). Manually opt in with
-  `ln -sfn "$(pwd)/wezterm/wezterm.lua" ~/.wezterm.lua` (the `-fn` flags
-  safely overwrite any stale symlink). The `wezterm` cask is still
-  auto-installed by `install.sh` so the fallback is one symlink away.
+- `<repo>/wezterm/<file>` — **terminal config; NOT auto-linked**. Manually
+  opt in with `ln -sfn "$(pwd)/wezterm/wezterm.lua" ~/.wezterm.lua` (the
+  `-fn` flags safely overwrite any stale symlink). The `wezterm` cask is
+  auto-installed by `install.sh` so the terminal is one symlink away.
 - `<repo>/copilot/<file>` — files linked to `$HOME/.copilot/<file>`. Currently:
   - `settings.json` — Copilot CLI settings (model: `claude-opus-4.7-1m-internal`,
     theme `dark`, `keepAlive: busy`, `continueOnAutoMode: true`, custom
@@ -81,14 +63,35 @@ creates symlinks into `$HOME` (and `~/.oh-my-zsh/custom/`).
     5 min. Bash 3.2-compatible. `install.sh` ensures the executable bit
     is set.
   - `copilot-instructions.md` — global agent instructions (autonomous mode).
+- `<repo>/claude/<file>` — files linked to `$HOME/.claude/<file>`. Currently:
+  - `settings.json` — Claude Code → Copilot bridge AND global default-pinning.
+    Sets `ANTHROPIC_BASE_URL=http://localhost:4141`,
+    `ANTHROPIC_API_KEY=dummy`, and pins **Opus 4.7 1M @ max effort** as the
+    global default for every machine that runs `install.sh`:
+    `ANTHROPIC_MODEL=claude-opus-4.7-1m-internal` AND top-level
+    `model=claude-opus-4.7-1m-internal` (both required so Claude Code uses it
+    on launch with no `/model` toggle), `effortLevel="max"` (deepest
+    reasoning by default, no `/effort` needed), and a `modelOverrides` map
+    that redirects every other Anthropic alias (Opus 4.5/4.6/4.7, Sonnet
+    4.5/4.6, Haiku 4.5) to the same Opus 4.7 1M target. Also pins
+    `ANTHROPIC_SMALL_FAST_MODEL=gpt-5.5` (cheap subtask model for things
+    like git-commit message generation) and autonomous mode
+    (`skipAutoPermissionPrompt=true`, `permissions.defaultMode="auto"`).
+    Requires a local [`copilot-api`](https://www.npmjs.com/package/copilot-api)
+    proxy running (`copilot-api start --claude-code`) which translates
+    Anthropic-format requests into GitHub Copilot ones. One-time bootstrap
+    on a fresh box: `npm i -g @anthropic-ai/claude-code copilot-api &&
+    copilot-api auth` (browser device-code flow). After auth, leave
+    `copilot-api start --claude-code` running and launch `claude` in
+    another shell.
 - `<repo>/oh-my-zsh-custom/<file>` — files linked to
   `$HOME/.oh-my-zsh/custom/<file>`. Currently:
   - `custom.zsh` — aliases, proxy helpers (`enable_proxy`/`disable_proxy`),
     brew completions, `PATH` extras (`.NET`, Android SDK).
   - `gg.zsh` — defines `gg <title>` which sets the active terminal's tab +
-    window title via OSC 1/2 escapes (works bare in Alacritty, WezTerm,
-    iTerm2, …) AND, when `$TMUX` is set, calls `tmux rename-window` so
-    tmux's status-bar window name is updated (the OSC 2 escape doesn't
+    window title via OSC 1/2 escapes (works bare in WezTerm, iTerm2, …)
+    AND, when `$TMUX` is set, calls `tmux rename-window` so tmux's
+    status-bar window name is updated (the OSC 2 escape doesn't
     propagate through tmux because `.tmux.conf` keeps `allow-rename off`
     / `automatic-rename off`; tmux's `set-titles on` then bubbles
     `#S · #W` up to the outer terminal). For WezTerm specifically, also
@@ -101,7 +104,7 @@ creates symlinks into `$HOME` (and `~/.oh-my-zsh/custom/`).
 1. macOS only (auto-installs Homebrew apps and fonts; failures are warnings,
    never fatal — handles deprecated taps and conflicting casks gracefully).
    Set `SKIP_BREW=1` to skip the Homebrew step entirely (useful for CI /
-   fake-`HOME` testing). Apps: `alacritty`, `wezterm`. Fonts: `font-recursive`,
+   fake-`HOME` testing). Apps: `wezterm`. Fonts: `font-recursive`,
    `font-recursive-mono-nerd-font`, `font-symbols-only-nerd-font`,
    `font-noto-color-emoji`. Formulae: `tmux`.
 2. Symlinks every top-level `.<name>` file in the repo to `$HOME/.<name>`
@@ -111,9 +114,9 @@ creates symlinks into `$HOME` (and `~/.oh-my-zsh/custom/`).
    Skipped (with a warning) if `~/.oh-my-zsh/custom/` does not exist.
 4. Symlinks every file in `copilot/` to `~/.copilot/`.
    Skipped (with a warning) if `~/.copilot/` does not exist.
-5. Symlinks every file in `alacritty/` to `~/.config/alacritty/`. **Creates
-   the destination directory if missing** (Alacritty only creates it on first
-   launch).
+5. Symlinks every file in `claude/` to `~/.claude/`. **Creates the
+   destination directory if missing** (Claude Code only creates `~/.claude/`
+   on first launch).
 6. Bootstraps TPM (Tmux Plugin Manager) if `tmux` is on PATH and `~/.tmux.conf`
    is present: clones `~/.tmux/plugins/tpm` if missing, then runs
    `tpm/bin/install_plugins` which spins up the default tmux server, loads
@@ -129,11 +132,10 @@ creates symlinks into `$HOME` (and `~/.oh-my-zsh/custom/`).
   run `install.sh`. oh-my-zsh auto-loads files in alphabetical order.
 - New Copilot CLI config: add a file to `copilot/`, run `install.sh`.
   Note: `mcp-config.json` is excluded (contains secrets) — manage it manually.
-- New Alacritty config snippet: add a file to `alacritty/`, run `install.sh`.
+- New Claude Code config: add a file to `claude/`, run `install.sh`.
   The destination directory is created automatically.
 - Editing existing config: edit in this repo. Symlinks make changes live
-  immediately on every machine (Alacritty: `[general] live_config_reload =
-  true`; tmux: `prefix + r`; wezterm: auto-reloads).
+  immediately on every machine (tmux: `prefix + r`; wezterm: auto-reloads).
 
 ## Sync workflow
 ```bash
@@ -147,10 +149,12 @@ cd ~/Public/dot-configs && git pull
 ```
 
 ## Requirements (from configs)
-- Apps: Alacritty (daily-driver as of `v0.5.0`), WezTerm (fallback for
-  users who want native tabs/splits without tmux). oh-my-zsh required only
-  for the `oh-my-zsh-custom/` part; Copilot CLI required only for the
-  `copilot/` part.
+- Apps: WezTerm (terminal — cask auto-installed; config opt-in via symlink).
+  oh-my-zsh required only for the `oh-my-zsh-custom/` part; Copilot CLI
+  required only for the `copilot/` part. Claude Code CLI + `copilot-api`
+  (npm globals) required only for the `claude/` part — `copilot-api start
+  --claude-code` runs a local proxy on port 4141 that the symlinked
+  `~/.claude/settings.json` points Claude Code at.
 - Tools: tmux ≥ 3.3 (3.6a tested) for the `.tmux.conf` features (TPM,
   OSC-52 set-clipboard, status-format extensions). git for TPM clone.
 - Fonts (auto-installed): Recursive (Rec Mono St.Helens — part of the Rec
@@ -164,9 +168,6 @@ cd ~/Public/dot-configs && git pull
 - Backups are created only when a non-matching file/link exists.
 - `oh-my-zsh-custom/custom.zsh` shadows oh-my-zsh's default
   `custom/custom.zsh` (which is gitignored upstream and irrelevant here).
-- Validate the Alacritty config without launching the GUI:
-  `alacritty migrate --dry-run --config-file alacritty/alacritty.toml`.
-  (`migrate` exits 0 with `Successfully migrated` when the schema is sound.)
 - Validate the tmux config without polluting your live tmux state:
   `tmux -f .tmux.conf -L _v new-session -d -s _v -x 200 -y 50 ; tmux -L _v kill-server`.
 - The `copilot/settings.json` working-tree may show a tiny diff

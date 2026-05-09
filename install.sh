@@ -24,7 +24,6 @@ install_macos_deps() {
   brew tap homebrew/cask-fonts >/dev/null 2>&1 || true
 
   local app_casks=(
-    alacritty
     wezterm
   )
   local font_casks=(
@@ -123,20 +122,20 @@ if [ -d "$copilot_src" ]; then
   fi
 fi
 
-# Link Alacritty config files (alacritty/* -> ~/.config/alacritty/*).
-# Like ghostty before it, the destination is created if missing because
-# Alacritty doesn't create ~/.config/alacritty/ until first launch — we
-# want install.sh to wire things up on a fresh box without requiring an
-# Alacritty launch first.
-alacritty_src="${src_dir}/alacritty"
-alacritty_dest="${HOME}/.config/alacritty"
-if [ -d "$alacritty_src" ]; then
-  mkdir -p "$alacritty_dest"
+# Link Claude Code config files (claude/* -> ~/.claude/*). Claude Code
+# normally creates ~/.claude on first launch; mkdir -p so install.sh can
+# wire things up on a fresh box without requiring a Claude Code launch
+# first. Used to point Claude Code at the local copilot-api proxy so it
+# can talk to GitHub Copilot models (see ReadMe.md).
+claude_src="${src_dir}/claude"
+claude_dest="${HOME}/.claude"
+if [ -d "$claude_src" ]; then
+  mkdir -p "$claude_dest"
   while IFS= read -r -d '' entry; do
     base="$(basename "$entry")"
-    link_file "$entry" "${alacritty_dest}/${base}"
-  done < <(find "$alacritty_src" -maxdepth 1 -mindepth 1 -type f -print0)
-  echo "Linked Alacritty config files to $alacritty_dest"
+    link_file "$entry" "${claude_dest}/${base}"
+  done < <(find "$claude_src" -maxdepth 1 -mindepth 1 -type f -print0)
+  echo "Linked Claude Code config files to $claude_dest"
 fi
 
 # Bootstrap TPM (Tmux Plugin Manager) and install plugins listed in

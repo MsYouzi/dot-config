@@ -307,7 +307,7 @@ config.audible_bell = "Disabled"
 -- COLORTERM short-circuits truecolor detection in Node/Rust/Python TUIs;
 -- FORCE_COLOR=3 overrides ALL detection logic in Node-based supports-color
 -- (Copilot CLI, ink TUIs) and forces 24-bit regardless of TERM. Mirrors
--- the matching env in alacritty/alacritty.toml + .tmux.conf.
+-- the matching env in .tmux.conf.
 config.set_environment_variables = {
   COLORTERM   = "truecolor",
   FORCE_COLOR = "3",

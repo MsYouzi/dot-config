@@ -5,8 +5,8 @@
 # session with a meaningful name on the tab.
 #
 # Notes:
-# - Uses OSC 1/2 escape sequences for the title (works in Alacritty (bare),
-#   WezTerm, iTerm2, and anything OSC-compliant). Inside tmux the escape
+# - Uses OSC 1/2 escape sequences for the title (works in WezTerm,
+#   iTerm2, and anything OSC-compliant). Inside tmux the escape
 #   doesn't reach the outer terminal because we set `allow-rename off` /
 #   `automatic-rename off` in .tmux.conf, so we also call `tmux rename-window`
 #   directly — that updates tmux's status-bar window name, and tmux's
