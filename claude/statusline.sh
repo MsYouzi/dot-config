@@ -2,46 +2,54 @@
 # Custom status line for Claude Code (~/.claude/statusline.sh).
 #
 # Sibling of ~/.copilot/statusline.sh — same vibe (one Nerd-Font-iconed
-# line per segment, separated by Unicode bars), but each segment gets its
-# own Gruvbox accent color instead of a flat ANSI dim wrap, so the line
-# pops a little more without screaming. Whole line is still bracketed in
-# bg=bg0 so it sits clean on top of any terminal background.
+# segment per data point, separated by Unicode bars), but each segment
+# gets its own Gruvbox accent color instead of a flat ANSI dim wrap, so
+# the line pops a little more without screaming.
 #
-# Claude Code feeds this script a JSON payload on stdin. Documented fields
-# we read:
-#   .session_id                        -> stable per session (Run timer key)
-#   .model.display_name | .model.id    -> shown in the Model segment
-#   .workspace.current_dir             -> Repo + Branch context
-#   .cost.total_cost_usd               -> Cost segment
-#   .cost.total_duration_ms            -> Wall (real elapsed)
-#   .cost.total_api_duration_ms        -> API (model wall-time)
-#   .cost.total_lines_added/removed    -> Diff segment (+a/-b)
-#   .exceeds_200k_tokens               -> Ctx warning badge
-#   .output_style.name                 -> Style segment (omitted if "default")
-# Everything is `// ""` / `// 0` guarded — older/newer Claude Code releases
-# may add/drop fields; missing field == segment skipped, never error.
+# Claude Code feeds this script a JSON payload on stdin. Schema reference:
+#   https://code.claude.com/docs/en/statusline
+# Fields we read (all `// ""` / `// 0` guarded so missing field == segment
+# silently skipped, never an error):
+#   .session_id                              -> Run timer key
+#   .model.display_name | .model.id          -> Model
+#   .workspace.current_dir                   -> cwd for git segments
+#   .workspace.git_worktree                  -> Worktree (when set)
+#   .effort.level                            -> Effort (when supported)
+#   .vim.mode                                -> Vim (when vim mode on)
+#   .agent.name                              -> Agent (when --agent set)
+#   .cost.total_cost_usd                     -> Cost
+#   .cost.total_duration_ms                  -> Wall (real elapsed)
+#   .cost.total_api_duration_ms              -> API (model wall-time)
+#   .cost.total_lines_added/removed          -> Diff (+a/-b)
+#   .context_window.used_percentage          -> Ctx (color-graded)
+#   .context_window.context_window_size      -> Ctx absolute total
+#   .output_style.name                       -> Style (omitted if "default")
 #
 # Segments (in render order; each omitted when its data is unavailable):
-#   Time     wall-clock HH:MM:SS                            (yellow)
-#   Model    short model name                               (aqua)
-#   Run      minutes since this session_id was first seen   (orange)
-#   Wall     total_duration_ms formatted (Hh Mm / Mm / Ss)  (purple)
-#   API      total_api_duration_ms formatted                (blue)
-#   Cost     total_cost_usd → $1.23                         (green)
-#   Diff     +added/-removed lines                          (green/red)
-#   Ctx      "200k+" badge when exceeds_200k_tokens is true (red)
-#   Style    output_style.name (omitted if "default"/empty) (purple)
-#   Repo     git clean/dirty + ↑ahead/↓behind upstream      (aqua)
-#   Branch   git branch (truncated)                         (yellow)
-#   Stash    git stash count (omitted when 0)               (orange)
-#   Venv     basename of $VIRTUAL_ENV                       (blue)
-#   GH       `gh auth status` account (cached 5 min)        (purple)
+#   Time     wall-clock HH:MM:SS                            yellow
+#   Model    short model name                               aqua
+#   Effort   .effort.level (low/medium/high/xhigh)          purple
+#   Run      minutes since this session_id was first seen   orange
+#   Wall     total_duration_ms formatted (Hh Mm / Mm / Ss)  purple
+#   API      total_api_duration_ms formatted                blue
+#   Cost     total_cost_usd → $1.23                         green
+#   Diff     +added/-removed lines                          green/red
+#   Ctx      context_window.used_percentage (color-graded)  green→yellow→red
+#   Vim      .vim.mode                                      orange
+#   Agent    .agent.name                                    purple
+#   Worktree .workspace.git_worktree                        aqua
+#   Style    output_style.name (omitted if "default")       purple
+#   Repo     git clean/dirty + ↑ahead/↓behind upstream      aqua
+#   Branch   git branch (truncated)                         yellow
+#   Stash    git stash count (omitted when 0)               orange
+#   Venv     basename of $VIRTUAL_ENV                       blue
+#   GH       `gh auth status` account (cached 5 min)        purple
 #
 # Env overrides (mirror the copilot one for muscle memory):
 #   CLAUDE_STATUSLINE_NO_ICONS=1  drop icons, keep text labels
 #   CLAUDE_STATUSLINE_NO_COLOR=1  drop color (still pads + separators)
 #   CLAUDE_STATUSLINE_PAD_TOP=N   blank lines before the line (default 0)
-#   CLAUDE_STATUSLINE_PAD_LEFT=N  spaces before the line     (default 1)
+#   CLAUDE_STATUSLINE_PAD_LEFT=N  spaces before the line     (default 0)
 #   CLAUDE_STATUSLINE_PAD_RIGHT=N spaces after the line      (default 0)
 #
 # Quick check that all icons render in your terminal:
@@ -53,7 +61,7 @@
 set -u
 
 # --- Configuration ---------------------------------------------------------
-SEGMENTS="time model timer wall api_time cost diff ctx style git branch stash venv gh_account"
+SEGMENTS="time model effort timer wall api_time cost diff ctx vim agent worktree style git branch stash venv gh_account"
 SEP=' │ '
 
 ICONS_ON=1
@@ -78,7 +86,7 @@ else
 fi
 
 PAD_TOP="${CLAUDE_STATUSLINE_PAD_TOP:-0}"
-PAD_LEFT="${CLAUDE_STATUSLINE_PAD_LEFT:-1}"
+PAD_LEFT="${CLAUDE_STATUSLINE_PAD_LEFT:-0}"
 PAD_RIGHT="${CLAUDE_STATUSLINE_PAD_RIGHT:-0}"
 
 repeat() {
@@ -112,17 +120,21 @@ if [ "${1:-}" = "--test" ]; then
   done <<'TEST_ICONS_EOF'
 f017||Time
 f085||Model
+f0e7||Effort
 f252||Run
-f520||Wall
+f254||Wall
 f233||API
 f155||Cost
-f440||Diff
-f071||Ctx
+f12a||Diff
+f0c2||Ctx
+f12b||Vim
+f135||Agent
+f1bb||Worktree
 f0ad||Style
 f1d3||Repo
-e725||Branch
+f126||Branch
 f187||Stash
-e73c||Venv
+f1ae||Venv
 f09b||GH
 TEST_ICONS_EOF
   exit 0
@@ -138,35 +150,50 @@ fi
 session_id=""
 model_name=""
 cwd=""
+effort_level=""
+vim_mode=""
+agent_name=""
+worktree_name=""
 cost_usd="0"
 total_ms="0"
 api_ms="0"
 lines_added="0"
 lines_removed="0"
-exceeds_200k="false"
+ctx_pct=""
+ctx_size=""
 output_style=""
 if [ -n "$session_json" ] && command -v jq >/dev/null 2>&1; then
   {
     IFS= read -r session_id    || session_id=""
     IFS= read -r model_name    || model_name=""
     IFS= read -r cwd           || cwd=""
+    IFS= read -r effort_level  || effort_level=""
+    IFS= read -r vim_mode      || vim_mode=""
+    IFS= read -r agent_name    || agent_name=""
+    IFS= read -r worktree_name || worktree_name=""
     IFS= read -r cost_usd      || cost_usd="0"
     IFS= read -r total_ms      || total_ms="0"
     IFS= read -r api_ms        || api_ms="0"
     IFS= read -r lines_added   || lines_added="0"
     IFS= read -r lines_removed || lines_removed="0"
-    IFS= read -r exceeds_200k  || exceeds_200k="false"
+    IFS= read -r ctx_pct       || ctx_pct=""
+    IFS= read -r ctx_size      || ctx_size=""
     IFS= read -r output_style  || output_style=""
   } < <(printf '%s' "$session_json" | jq -r '
         (.session_id // ""),
         ((.model.display_name // .model.id) // ""),
         ((.workspace.current_dir // .cwd) // ""),
+        (.effort.level // ""),
+        (.vim.mode // ""),
+        (.agent.name // ""),
+        (.workspace.git_worktree // .worktree.name // ""),
         (.cost.total_cost_usd // 0),
         (.cost.total_duration_ms // 0),
         (.cost.total_api_duration_ms // 0),
         (.cost.total_lines_added // 0),
         (.cost.total_lines_removed // 0),
-        (.exceeds_200k_tokens // false),
+        (.context_window.used_percentage // ""),
+        (.context_window.context_window_size // ""),
         (.output_style.name // "")
       ' 2>/dev/null)
 fi
@@ -220,6 +247,18 @@ fmt_ms() {
   fi
 }
 
+# Format a token count for the Ctx segment: 200000 -> 200k, 1000000 -> 1M.
+fmt_tokens() {
+  local n=${1:-0}
+  if [ "$n" -ge 1000000 ]; then
+    awk -v n="$n" 'BEGIN{ printf("%.1fM", n/1000000) }'
+  elif [ "$n" -ge 1000 ]; then
+    awk -v n="$n" 'BEGIN{ printf("%dk", int(n/1000)) }'
+  else
+    printf '%d' "$n"
+  fi
+}
+
 # --- 4. Segment functions --------------------------------------------------
 seg_time() {
   printf '%s%s%s' "$(label "$C_YELLOW" '' 'Time')" "$C_FG$(date '+%H:%M:%S')" "$C_RESET"
@@ -231,7 +270,12 @@ seg_model() {
   local short="$model_name"
   short="${short#claude-}"
   short="${short%-internal}"
-  printf '%s%s%s' "$(label "$C_AQUA" '' 'Model')" "$C_FG$short" "$C_RESET"
+  printf '%s%s%s%s' "$(label "$C_AQUA" '' 'Model')" "$C_FG" "$short" "$C_RESET"
+}
+
+seg_effort() {
+  [ -n "$effort_level" ] || return 0
+  printf '%s%s%s%s' "$(label "$C_PURPLE" '' 'Effort')" "$C_FG" "$effort_level" "$C_RESET"
 }
 
 seg_timer() {
@@ -261,14 +305,12 @@ seg_api_time() {
 
 seg_cost() {
   is_pos_num "$cost_usd" || return 0
-  # awk handles the float math + 2-decimal rounding.
   local pretty
   pretty="$(awk -v c="$cost_usd" 'BEGIN{ printf("$%.2f", c+0) }')"
   printf '%s%s%s%s' "$(label "$C_GREEN" '' 'Cost')" "$C_FG" "$pretty" "$C_RESET"
 }
 
 seg_diff() {
-  # Skip if both zero; otherwise color +adds green / -dels red.
   local has=0
   is_pos_int "$lines_added" && has=1
   is_pos_int "$lines_removed" && has=1
@@ -284,9 +326,45 @@ seg_diff() {
   printf '%s%s' "$(label "$C_GREEN" '' 'Diff')" "$body"
 }
 
+# Ctx — context window usage. Prefer the rich `.context_window.used_percentage`
+# field (Claude Code 2.x); color-grade green→yellow→red. Show absolute size
+# parenthetically when known. Falls back to the old 200k+ red badge if the
+# rich field is missing.
 seg_ctx() {
-  [ "$exceeds_200k" = "true" ] || return 0
-  printf '%s%s200k+%s' "$(label "$C_RED" '' 'Ctx')" "$C_RED" "$C_RESET"
+  if [ -n "$ctx_pct" ]; then
+    local pct_int
+    pct_int="$(awk -v p="$ctx_pct" 'BEGIN{ printf("%d", p+0) }')"
+    local color="$C_GREEN"
+    if [ "$pct_int" -ge 80 ]; then
+      color="$C_RED"
+    elif [ "$pct_int" -ge 50 ]; then
+      color="$C_YELLOW"
+    fi
+    local body
+    if [ -n "$ctx_size" ] && [ "$ctx_size" != "null" ]; then
+      body="${color}${pct_int}%${C_RESET}${C_DIM}/$(fmt_tokens "$ctx_size")${C_RESET}"
+    else
+      body="${color}${pct_int}%${C_RESET}"
+    fi
+    printf '%s%s' "$(label "$C_AQUA" '' 'Ctx')" "$body"
+    return 0
+  fi
+  return 0
+}
+
+seg_vim() {
+  [ -n "$vim_mode" ] || return 0
+  printf '%s%s%s%s' "$(label "$C_ORANGE" '' 'Vim')" "$C_FG" "$vim_mode" "$C_RESET"
+}
+
+seg_agent() {
+  [ -n "$agent_name" ] || return 0
+  printf '%s%s%s%s' "$(label "$C_PURPLE" '' 'Agent')" "$C_FG" "$agent_name" "$C_RESET"
+}
+
+seg_worktree() {
+  [ -n "$worktree_name" ] || return 0
+  printf '%s%s%s%s' "$(label "$C_AQUA" '' 'Worktree')" "$C_FG" "$worktree_name" "$C_RESET"
 }
 
 seg_style() {
@@ -389,7 +467,12 @@ while [ "$i" -lt "$PAD_TOP" ]; do
   i=$((i + 1))
 done
 
-printf '%s%s%s' \
+# `\r` (carriage return) snaps the cursor to column 1 before painting,
+# which matters because Claude Code's renderer sometimes pre-positions
+# us a cell or two in. Note: Claude Code's statusline panel itself has
+# a 1-cell border that no script-side ANSI can defeat — that border is
+# UI chrome, not padding.
+printf '\r%s%s%s' \
   "$(repeat ' ' "$PAD_LEFT")" \
   "$out" \
   "$(repeat ' ' "$PAD_RIGHT")"
