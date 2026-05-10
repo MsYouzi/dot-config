@@ -1,0 +1,9 @@
+{
+  "_comment": "Synced MCP servers — secret-free entries only (tokens/keys live in ~/.config/github-copilot/mcp.json which is gitignored). install.sh merges these into ~/.config/github-copilot/mcp.json on install, then the existing pipeline imports the result into both Copilot CLI and Claude Code (~/.claude.json).",
+  "mcpServers": {
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/"
+    }
+  }
+}

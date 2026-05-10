@@ -183,6 +183,36 @@ if [ -d "$claude_src" ]; then
   done < <(find "$claude_src" -maxdepth 1 -mindepth 1 -type f -print0)
   echo "Linked Claude Code config files to $claude_dest"
 
+  # Merge tracked, secret-free MCP servers from this repo into the user's
+  # Copilot MCP config. mcp-shared.json carries entries that are safe to
+  # commit (e.g. the GitHub remote MCP — OAuth, no PAT in the file). Per-
+  # machine secret-bearing entries (WAKATIME_API_KEY etc.) stay in the
+  # gitignored ~/.config/github-copilot/mcp.json and are preserved by the
+  # merge. shared > local on key collision so the synced version wins.
+  shared_mcp="${src_dir}/mcp-shared.json"
+  copilot_mcp_pre="${HOME}/.config/github-copilot/mcp.json"
+  if have_cmd jq && [ -f "$shared_mcp" ]; then
+    mkdir -p "$(dirname "$copilot_mcp_pre")"
+    if [ ! -f "$copilot_mcp_pre" ]; then
+      # Bootstrap with just the shared entries.
+      jq '{mcpServers: (.mcpServers // {})}' "$shared_mcp" >"$copilot_mcp_pre" \
+        && echo "Created $copilot_mcp_pre with $(jq '.mcpServers | length' "$copilot_mcp_pre") shared MCP servers"
+    else
+      tmp_mcp="$(mktemp)"
+      if jq -s '
+            .[0].mcpServers as $local
+            | .[1].mcpServers as $shared
+            | .[0] + {mcpServers: ($local + $shared)}
+          ' "$copilot_mcp_pre" "$shared_mcp" >"$tmp_mcp" 2>/dev/null; then
+        mv "$tmp_mcp" "$copilot_mcp_pre"
+        echo "Merged shared MCP servers into $copilot_mcp_pre (shared wins on collision)"
+      else
+        rm -f "$tmp_mcp"
+        echo "Warning: jq merge of shared MCP into $copilot_mcp_pre failed; skipped"
+      fi
+    fi
+  fi
+
   # Import Copilot CLI's MCP servers into Claude Code's user-scope config.
   # Claude Code reads MCP servers from ~/.claude.json (top-level
   # `mcpServers` key) — NOT from ~/.claude/settings.json — so we have to
