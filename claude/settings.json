@@ -9,7 +9,7 @@
     "allow": [
       "*"
     ],
-    "defaultMode": "bypassPermissions"
+    "defaultMode": "auto"
   },
   "model": "claude-opus-4.7-1m-internal",
   "modelOverrides": {
@@ -29,7 +29,6 @@
     "refreshInterval": 100
   },
   "effortLevel": "xhigh",
-  "skipDangerousModePermissionPrompt": true,
   "theme": "dark-ansi",
   "skipAutoPermissionPrompt": true,
   "editorMode": "vim"
