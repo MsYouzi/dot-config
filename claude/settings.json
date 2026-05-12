@@ -25,12 +25,9 @@
     "type": "command",
     "command": "~/.claude/statusline.sh",
     "padding": 0,
-    "refreshInterval": 100,
-    "hideVimModeIndicator": true
+    "refreshInterval": 100
   },
   "effortLevel": "xhigh",
   "theme": "dark-ansi",
-  "editorMode": "vim",
-  "skipAutoPermissionPrompt": true,
-  "skipDangerousModePermissionPrompt": true
+  "skipAutoPermissionPrompt": true
 }

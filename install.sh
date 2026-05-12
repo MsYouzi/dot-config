@@ -9,18 +9,6 @@ is_macos() {
   [ "$(uname -s)" = "Darwin" ]
 }
 
-# Windows-running-bash detection. install.sh is the POSIX installer — we
-# want to gracefully skip zsh-only files (oh-my-zsh customs, .tmux.conf)
-# when someone runs it under Git Bash / MSYS2 / Cygwin / WSL on Windows.
-# The recommended Windows path is install.ps1; this is the safety net for
-# users who get here anyway.
-is_windows() {
-  case "$(uname -s)" in
-    MINGW*|MSYS*|CYGWIN*) return 0 ;;
-    *) return 1 ;;
-  esac
-}
-
 have_cmd() {
   command -v "$1" >/dev/null 2>&1
 }
@@ -94,27 +82,16 @@ else
   echo "Auto-install only supports macOS + Homebrew. Install apps/fonts manually."
 fi
 
-# Top-level dotfiles (.tmux.conf etc.) — POSIX-only. Skip on Windows where
-# tmux isn't the typical session manager (Windows Terminal / WezTerm panes
-# replace it).
-if is_windows; then
-  echo "Skipping top-level dotfiles (.tmux.conf etc.): POSIX-only on Windows"
-else
-  while IFS= read -r -d '' entry; do
-    base="$(basename "$entry")"
-    link_file "$entry" "${dest_dir}/${base}"
-  done < <(find "$src_dir" -maxdepth 1 -mindepth 1 -name ".*" -type f -print0)
-fi
+# Top-level dotfiles (.tmux.conf etc.).
+while IFS= read -r -d '' entry; do
+  base="$(basename "$entry")"
+  link_file "$entry" "${dest_dir}/${base}"
+done < <(find "$src_dir" -maxdepth 1 -mindepth 1 -name ".*" -type f -print0)
 
 # Link oh-my-zsh custom files (oh-my-zsh-custom/* -> ~/.oh-my-zsh/custom/*).
-# Skipped on Windows — zsh isn't the default shell, and the .zsh files use
-# zsh-specific syntax (`emulate -L zsh`, `(( $+commands[...] ))`, etc.).
-# The PowerShell equivalents of cc/gg ship via install.ps1's profile snippet.
 omz_custom_src="${src_dir}/oh-my-zsh-custom"
 omz_custom_dest="${HOME}/.oh-my-zsh/custom"
-if is_windows; then
-  echo "Skipping oh-my-zsh custom files: zsh not the typical Windows shell (use install.ps1 for PowerShell equivalents)"
-elif [ -d "$omz_custom_src" ]; then
+if [ -d "$omz_custom_src" ]; then
   if [ -d "$omz_custom_dest" ]; then
     while IFS= read -r -d '' entry; do
       base="$(basename "$entry")"
@@ -133,14 +110,6 @@ if [ -d "$copilot_src" ]; then
   if [ -d "$copilot_dest" ]; then
     while IFS= read -r -d '' entry; do
       base="$(basename "$entry")"
-      # Skip the PowerShell statusline on POSIX — it's only meaningful on
-      # Windows (linked by install.ps1). Symlinking it here would just
-      # clutter ~/.copilot with a script that never runs.
-      # Skip settings-windows.json — POSIX uses the canonical settings.json.
-      case "$base" in
-        *.ps1) continue ;;
-        settings-windows.json) continue ;;
-      esac
       link_file "$entry" "${copilot_dest}/${base}"
       # Preserve executable bit on shell scripts (e.g., statusline.sh) so
       # Copilot CLI can run them directly without chmod each time.
@@ -167,12 +136,8 @@ if [ -d "$claude_src" ]; then
     base="$(basename "$entry")"
     # Skip in-folder docs (README*) — they belong next to the config in the
     # repo but shouldn't pollute ~/.claude/ where Claude Code keeps state.
-    # Skip the PowerShell statusline on POSIX (Windows-only — see install.ps1).
-    # Skip settings-windows.json — POSIX uses the canonical settings.json.
     case "$base" in
       README*) continue ;;
-      *.ps1) continue ;;
-      settings-windows.json) continue ;;
     esac
     link_file "$entry" "${claude_dest}/${base}"
     # Preserve executable bit on shell scripts (e.g., statusline.sh) so

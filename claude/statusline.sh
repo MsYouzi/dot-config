@@ -61,10 +61,14 @@
 set -u
 
 # --- Configuration ---------------------------------------------------------
-# Two-line layout: "status" segments (mode/time/usage) on line 1, "repo"
-# segments (git/integrations/context) on line 2. The literal string `\n`
-# in SEGMENTS is recognized by the render loop as a line break.
-SEGMENTS="vim time timer cost model effort agent worktree style \n git branch stash mcp skills ctx venv"
+# Four-line layout. A literal `\n` token in SEGMENTS introduces a line
+# break in the render loop. Empty/no-op segments collapse cleanly so
+# auto-hiding ones (worktree, venv, stash, diff) take no space when off.
+#   L1: status            — time, run timer, wall, api, cost, model, effort
+#   L2: repo + context    — context, repo, diff, branch, stash, worktree
+#   L3: integrations      — mcp, skills, agent, style
+#   L4: cwd path          — full directory path
+SEGMENTS="time timer wall api_time cost model effort \n ctx git diff branch stash worktree \n mcp skills agent style \n path"
 SEP=' │ '
 
 ICONS_ON=1
@@ -404,9 +408,27 @@ seg_cost() {
 }
 
 seg_diff() {
-  # Disabled — user removed Diff from SEGMENTS. Kept here so re-enabling
-  # is just a matter of adding `diff` back to the list at the top.
-  return 0
+  # +added/-removed line counts from the JSON payload. Auto-hides when
+  # the session hasn't touched any code yet (both counts zero).
+  local a="${lines_added:-0}" r="${lines_removed:-0}"
+  is_pos_int "$a" || is_pos_int "$r" || return 0
+  label "$C_GREEN" "$ICON_DIFF" 'Diff'
+  printf -v __SEG '%s%s+%d%s%s/-%d%s' "$__LBL" "$C_GREEN" "$a" "$C_RESET" "$C_RED" "$r" "$C_RESET"
+}
+
+# Path — full cwd as its own line. Replace $HOME with ~ for brevity;
+# this is exactly how Claude Code normally writes it in the welcome
+# banner. Auto-hides if cwd is empty (paranoia — JSON should always
+# have it).
+seg_path() {
+  [ -n "$cwd" ] || return 0
+  local p="$cwd"
+  case "$p" in
+    "$HOME") p="~" ;;
+    "$HOME"/*) p="~${p#$HOME}" ;;
+  esac
+  label "$C_BLUE" "$ICON_VENV" 'Path'
+  printf -v __SEG '%s%s%s%s' "$__LBL" "$C_FG" "$p" "$C_RESET"
 }
 
 # Ctx — context window usage. Prefer the rich `.context_window.used_percentage`
