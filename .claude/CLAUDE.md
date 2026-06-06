@@ -117,14 +117,14 @@ Personal dotfiles, synced across machines via git + symlinks. macOS-only;
   with Anthropic's SDK. Use Bearer-PAT auth in HTTP headers (per
   github/github-mcp-server's official Claude Code guide).
 
-## Model-routing convention (modelOverrides in claude/settings.json)
+## Model-routing convention (claude/settings.json)
 
 Sonnet and Opus are treated as **separate model families** by user
 convention. Current routing:
 
-- Opus 4-5 / 4-6 / 4-7 → `claude-opus-4.7-1m-internal`
+- Opus 4-5 / 4-6 / 4-7 / 4-8 → top-level `model` (`claude-opus-4.8`)
 - Sonnet 4-5 / 4-6 → `gpt-5.5`
-- Haiku 4-5 → `claude-opus-4.7-1m-internal`
+- Haiku 4-5 → `gpt-5.5`
 - gpt-5-mini → `gpt-5.5`
 
 When asked to "use the same model for the family", apply within Opus or

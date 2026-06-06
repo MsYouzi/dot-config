@@ -8,10 +8,10 @@
 # "...is disabled by settings"). The flag is the only path the binary
 # honors.
 #
-# Model + effort defaults live in ~/.claude/settings.json (model =
-# claude-opus-4.7-1m-internal, effortLevel = "xhigh"); to switch models
-# mid-session use Claude Code's `/model <name>` — the proxy passes
-# free-form model names through.
+# Model + effort defaults live in ~/.claude/settings.json
+# (claude-opus-4.8, effortLevel = "xhigh"); to switch models mid-session
+# use Claude Code's `/model <name>` — the proxy passes free-form model names
+# through.
 
 unalias claude 2>/dev/null
 unfunction claude 2>/dev/null

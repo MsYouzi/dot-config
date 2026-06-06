@@ -6,8 +6,8 @@
 # directly so the title sticks even when nested, then runs `claude` in
 # the current shell.
 #
-# Model + effort are pinned globally in ~/.claude/settings.json (model =
-# claude-opus-4.7-1m-internal, effortLevel = "xhigh"). Permission mode
+# Model + effort are pinned globally in ~/.claude/settings.json
+# (claude-opus-4.8, effortLevel = "xhigh"). Permission mode
 # CANNOT be pinned via settings.json — the binary explicitly rejects
 # defaultMode="bypassPermissions" with "bypassPermissions mode is
 # disabled by settings". So we pass --permission-mode at the command

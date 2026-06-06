@@ -42,12 +42,9 @@ claude                              # interactive REPL
 claude -p "explain this repo"       # one-shot
 ```
 
-Two pinned aliases live in `oh-my-zsh-custom/claude.zsh`:
-
-```bash
-claude-opus    # claude --model claude-opus-4.7-[1m]
-claude-gpt     # claude --model gpt-5.5
-```
+The `oh-my-zsh-custom/claude.zsh` wrapper launches `claude` with
+`--permission-mode bypassPermissions`; model and effort defaults live in
+`settings.json`.
 
 ---
 
@@ -58,14 +55,14 @@ claude-gpt     # claude --model gpt-5.5
   "env": {
     "ANTHROPIC_BASE_URL": "http://127.0.0.1:4142",
     "ANTHROPIC_AUTH_TOKEN": "dummy",
-    "ANTHROPIC_MODEL": "claude-opus-4.7-[1m]",
+    "ANTHROPIC_MODEL": "claude-opus-4.8",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "gpt-5.5",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "gpt-5.5",
     "ANTHROPIC_SMALL_FAST_MODEL": "gpt-5.5",
     "MODEL_REASONING_EFFORT": "xhigh"
   },
   "permissions": { "allow": ["*"], "defaultMode": "auto" },
-  "model": "claude-opus-4.7-[1m]",
+  "model": "claude-opus-4.8",
   "statusLine": {
     "type": "command",
     "command": "~/.claude/statusline.sh",
@@ -83,7 +80,7 @@ claude-gpt     # claude --model gpt-5.5
 |---|---|
 | `env.ANTHROPIC_BASE_URL` | Points Claude Code at the local proxy instead of `api.anthropic.com`. |
 | `env.ANTHROPIC_AUTH_TOKEN` | Required by Claude Code's startup check. copilot-bridge expects the token form (not `ANTHROPIC_API_KEY`) and ignores its value — `dummy` is fine. **First launch will prompt** "Use this custom API key? (y/N)" — pick **Yes**, otherwise it lands in `~/.claude.json#customApiKeyResponses.rejected` and Claude refuses to use it. |
-| `env.ANTHROPIC_MODEL` | Default model for main turns. The bracket form `claude-opus-4.7-[1m]` is Claude Code's UI-friendly variant; copilot-bridge maps it to `claude-opus-4.7-1m` upstream. Overridden by top-level `model` and `--model`. |
+| `env.ANTHROPIC_MODEL` | Default model for main turns. `claude-opus-4.8` is natively a 1M-context model on Copilot, so no `[1m]` alias is needed. Overridden by top-level `model` and `--model`. |
 | `env.ANTHROPIC_DEFAULT_SONNET_MODEL` | Routes every Sonnet alias (Sonnet 4-5 / 4-6 / Sonnet-1M) to a Copilot model. Pinned to `gpt-5.5` so Sonnet picks land on a mid-tier model rather than full Opus. |
 | `env.ANTHROPIC_DEFAULT_HAIKU_MODEL` | Routes every Haiku alias (and any sub-agent spawned with `model: "haiku"`) to a Copilot model. Pinned to `gpt-5.5`. **This is the variable current Claude Code reads** — the legacy `ANTHROPIC_SMALL_FAST_MODEL` is silently ignored by recent versions, so haiku sub-agents would otherwise leak to upstream `claude-haiku-4-5-20251001`. |
 | `env.ANTHROPIC_SMALL_FAST_MODEL` | Legacy alias for the same Haiku/small-fast tier. Kept for older Claude Code versions; current versions prefer `ANTHROPIC_DEFAULT_HAIKU_MODEL`. Pinning to `gpt-5.5` silences `400 model_not_supported` either way. |
@@ -98,7 +95,7 @@ Claude Code's `/model` picker is **hard-coded** to its own lineup
 hide entries or substitute a custom list. The pragmatic workaround is
 the two `ANTHROPIC_*_MODEL` env vars above: every menu pick still
 appears, but each Sonnet / Haiku entry routes to `gpt-5.5` while every
-Opus entry resolves to the top-level `model` (`claude-opus-4.7-[1m]`),
+Opus entry resolves to the top-level `model` (`claude-opus-4.8`),
 giving you exactly two effective models. (Older revisions of this config
 used a `modelOverrides` map for the same purpose; the env-var route is
 simpler and works without the proxy maintaining its own routing table.)
@@ -109,18 +106,17 @@ Run `copilot-bridge start --port 4142` once and check the startup log — it
 prints every model your account exposes. As of this writing:
 
 ```
-claude-opus-4.7, claude-opus-4.7-high, claude-opus-4.7-xhigh,
-claude-opus-4.7-1m, claude-opus-4.6, claude-opus-4.6-1m,
+claude-opus-4.8, claude-opus-4.7, claude-opus-4.7-high,
+claude-opus-4.7-xhigh, claude-opus-4.7-1m, claude-opus-4.6,
+claude-opus-4.6-1m,
 claude-sonnet-4.6, claude-sonnet-4.5, claude-haiku-4.5,
 gpt-5.5, gpt-5.4, gpt-5.4-mini, gpt-5.3-codex, gpt-5.2, gpt-5.2-codex,
 gpt-5-mini, gpt-4.1, gpt-4o, gemini-3.1-pro-preview, gemini-2.5-pro, …
 ```
 
-> **xhigh ⊕ 1M context.** Copilot exposes either `claude-opus-4.7-xhigh`
-> (default 200k context, max effort) **or** `claude-opus-4.7-1m` (1M
-> context, default effort). There is **no** `*-1m-xhigh` combo, so pick
-> one. Current default is the 1M variant (`claude-opus-4.7-[1m]`) plus
-> `MODEL_REASONING_EFFORT=xhigh`, which the bridge forwards per-request.
+> **xhigh + 1M context.** `claude-opus-4.8` is natively 1M-context on Copilot,
+> and `MODEL_REASONING_EFFORT=xhigh` asks the bridge to forward max reasoning
+> per request. No bracketed `[1m]` alias is needed for this model.
 
 ---
 
@@ -144,14 +140,15 @@ gpt-5-mini, gpt-4.1, gpt-4o, gemini-3.1-pro-preview, gemini-2.5-pro, …
 - Switch default model: edit `model` + `env.ANTHROPIC_MODEL` in
   `settings.json` (this folder); takes effect on next `claude` launch
   (no `install.sh` re-run needed — it's a symlink).
-- Add a new alias: append to `oh-my-zsh-custom/claude.zsh` and `source ~/.zshrc`.
+- Add a new launcher/helper: append to `oh-my-zsh-custom/claude.zsh` and
+  `source ~/.zshrc`.
 
 ## See also
 
 - Top-level [`ReadMe.md`](../ReadMe.md) — repo-wide layout and `install.sh`
   flow.
 - [`oh-my-zsh-custom/claude.zsh`](../oh-my-zsh-custom/claude.zsh) — the
-  `claude-opus` / `claude-gpt` launcher aliases.
+  bypass-permission launcher wrapper.
 - [copilot-bridge on npm](https://www.npmjs.com/package/betahi-copilot-bridge) — proxy
   source / flag reference.
 - [Claude Code docs](https://docs.claude.com/en/docs/claude-code) —

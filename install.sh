@@ -118,6 +118,9 @@ if [ -d "$copilot_src" ]; then
       esac
     done < <(find "$copilot_src" -maxdepth 1 -mindepth 1 -type f -print0)
     echo "Linked Copilot CLI config files to $copilot_dest"
+    if [ -x "${copilot_src}/cleanup-legacy.sh" ]; then
+      "${copilot_src}/cleanup-legacy.sh" || echo "Warning: Copilot legacy cleanup reported errors (skipping)"
+    fi
   else
     echo "Skipping Copilot config files: $copilot_dest does not exist (copilot CLI not installed?)"
   fi

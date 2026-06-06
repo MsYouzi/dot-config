@@ -2,7 +2,7 @@
   "env": {
     "ANTHROPIC_BASE_URL": "http://127.0.0.1:4142",
     "ANTHROPIC_AUTH_TOKEN": "dummy",
-    "ANTHROPIC_MODEL": "claude-opus-4.7-[1m]",
+    "ANTHROPIC_MODEL": "claude-opus-4.8",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "gpt-5.5",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "gpt-5.5",
     "ANTHROPIC_SMALL_FAST_MODEL": "gpt-5.5",
@@ -14,7 +14,40 @@
     ],
     "defaultMode": "auto"
   },
-  "model": "claude-opus-4.7-[1m]",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Task|Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/subagent-counter.sh start"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Task|Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/subagent-counter.sh stop"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/subagent-counter.sh stop"
+          }
+        ]
+      }
+    ]
+  },
   "statusLine": {
     "type": "command",
     "command": "~/.claude/statusline.sh",
@@ -23,7 +56,8 @@
   },
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true,
-    "claude-code-wakatime@wakatime": true
+    "claude-code-wakatime@wakatime": true,
+    "rust-analyzer-lsp@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "wakatime": {
@@ -36,30 +70,5 @@
   "effortLevel": "xhigh",
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark-ansi",
-  "skipAutoPermissionPrompt": true,
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Task|Agent",
-        "hooks": [
-          { "type": "command", "command": "~/.claude/hooks/subagent-counter.sh start" }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Task|Agent",
-        "hooks": [
-          { "type": "command", "command": "~/.claude/hooks/subagent-counter.sh stop" }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "hooks": [
-          { "type": "command", "command": "~/.claude/hooks/subagent-counter.sh stop" }
-        ]
-      }
-    ]
-  }
+  "skipAutoPermissionPrompt": true
 }

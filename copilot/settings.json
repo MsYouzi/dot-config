@@ -1,5 +1,6 @@
 {
-  "model": "claude-opus-4.7-1m-internal",
+  "model": "gpt-5.5",
+  "contextTier": "long_context",
   "theme": "dark",
   "renderMarkdown": true,
   "logLevel": "all",
@@ -15,12 +16,12 @@
   "respectGitignore": true,
   "includeCoAuthoredBy": true,
   "footer": {
-    "showModelEffort": true,
-    "showDirectory": true,
-    "showBranch": true,
-    "showContextWindow": true,
+    "showModelEffort": false,
+    "showDirectory": false,
+    "showBranch": false,
+    "showContextWindow": false,
     "showQuota": false,
-    "showAgent": true,
+    "showAgent": false,
     "showCodeChanges": false,
     "showUsername": false,
     "showCustom": true
@@ -34,20 +35,6 @@
     "openDiffOnEdit": true
   },
   "effortLevel": "xhigh",
-  "trustedFolders": [
-    "/Users/d0n9x1n"
-  ],
-  "lastLoggedInUser": {
-    "host": "https://github.com",
-    "login": "D0n9X1n"
-  },
-  "loggedInUsers": [
-    {
-      "host": "https://github.com",
-      "login": "D0n9X1n"
-    }
-  ],
-  "firstLaunchAt": "2026-03-11T00:00:00.000Z",
   "sessionSync": [
     {
       "origin": "D0n9X1n/nvim-config",

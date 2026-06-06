@@ -23,10 +23,12 @@ dot-configs/
 ├── .tmux.conf                   # -> ~/.tmux.conf  (tab/split/session manager)
 ├── oh-my-zsh-custom/            # contents -> ~/.oh-my-zsh/custom/
 │   ├── custom.zsh               # aliases, proxy helpers, brew completions, env
+│   ├── copilot.zsh              # copilot update wrapper -> cleanup hook
 │   └── gg.zsh                   # gg() function (terminal title + copilot)
 ├── copilot/                     # contents -> ~/.copilot/
 │   ├── settings.json            # Copilot CLI settings
 │   ├── statusline.sh            # statusline (bash 3.2+)
+│   ├── cleanup-legacy.sh        # prune stale Copilot CLI upgrade payloads
 │   └── copilot-instructions.md  # global agent instructions
 ├── claude/                      # contents -> ~/.claude/
 │   ├── settings.json            # Claude Code settings
@@ -61,7 +63,8 @@ the live config tracks repo edits, and is idempotent.
    Skipped (with a warning) if `~/.oh-my-zsh/custom/` does not exist.
 4. Symlinks every file in `copilot/` into `~/.copilot/`. Skipped (with a
    warning) if `~/.copilot/` does not exist. Preserves the executable bit on
-   `*.sh` files (so `statusline.sh` runs without re-chmod).
+   `*.sh` files (so `statusline.sh` runs without re-chmod), then runs
+   `cleanup-legacy.sh` to prune stale Copilot CLI package versions/logs.
 5. Symlinks every file in `claude/` into `~/.claude/`. **Creates the
    destination directory if missing** (Claude Code only creates `~/.claude/`
    on first launch; mkdir-p so install.sh wires things up on a fresh box).
@@ -371,6 +374,12 @@ After adding/editing, commit and push. Other machines pick up the change with
 - Loads optional autojump if installed.
 - Adds `.NET` and Android SDK tooling to `PATH`.
 
+#### `copilot.zsh`
+
+Wraps `copilot update`: after a successful update it runs
+`~/.copilot/cleanup-legacy.sh`, so old `~/.copilot/pkg/<platform>/<version>`
+payloads left by upgrades are pruned automatically.
+
 #### `gg.zsh` — `gg <title>`
 
 Sets the current terminal tab and window title to `<title>` via OSC 1 / 2
@@ -488,8 +497,9 @@ installed).
 
 #### `settings.json`
 
-Copilot CLI configuration. Pinned model `gpt-5.5`, `effortLevel: xhigh`,
-`contextTier: long_context`, theme `dark`, `keepAlive: busy`,
+Copilot CLI configuration. Pinned model `gpt-5.5`,
+`contextTier: long_context` (1M context), `effortLevel: xhigh`, theme `dark`,
+`keepAlive: busy`,
 `continueOnAutoMode: true`, custom footer, and a custom status line provided
 by `statusline.sh`.
 
@@ -550,6 +560,16 @@ from stdin via a single `jq` call, caches git state for 5s
 > Override per-shell via
 > `COPILOT_STATUSLINE_SEGMENTS`.
 
+#### `cleanup-legacy.sh`
+
+Executable upgrade-cleanup hook. It detects the current Copilot CLI version via
+`copilot --version`, keeps only that package under
+`~/.copilot/pkg/<platform>/<version>`, removes older package payloads, empty
+package dirs, `.DS_Store`, root `*.bak.*` files, and all but the newest
+`logs/process-*.log`. `install.sh` runs it after linking Copilot files; the
+`oh-my-zsh-custom/copilot.zsh` wrapper runs it after every successful
+`copilot update`.
+
 #### `copilot-instructions.md`
 
 Global agent instructions — autonomous mode (no per-action confirmation):
@@ -569,14 +589,14 @@ proxy that translates Anthropic-format requests into Copilot ones.
   "env": {
     "ANTHROPIC_BASE_URL": "http://127.0.0.1:4142",
     "ANTHROPIC_AUTH_TOKEN": "dummy",
-    "ANTHROPIC_MODEL": "claude-opus-4.7-[1m]",
+    "ANTHROPIC_MODEL": "claude-opus-4.8",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "gpt-5.5",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "gpt-5.5",
     "ANTHROPIC_SMALL_FAST_MODEL": "gpt-5.5",
     "MODEL_REASONING_EFFORT": "xhigh"
   },
   "permissions": { "allow": ["*"], "defaultMode": "auto" },
-  "model": "claude-opus-4.7-[1m]",
+  "model": "claude-opus-4.8",
   "statusLine": {
     "type": "command",
     "command": "~/.claude/statusline.sh",
@@ -592,11 +612,12 @@ proxy that translates Anthropic-format requests into Copilot ones.
 
 Defaults pinned globally (synced across machines via this repo):
 
-- **Model: `claude-opus-4.7-[1m]`** (Opus 4.7, 1M-context variant). The
-  bracket form is Claude Code's UI-friendly alias; copilot-bridge maps
-  it to `claude-opus-4.7-1m` upstream. Pinned in both
-  `env.ANTHROPIC_MODEL` *and* the top-level `model` field so Claude Code
-  uses it on every launch with no `/model` toggle needed.
+- **Model: `claude-opus-4.8`** (Opus 4.8). Base `claude-opus-4.8` is natively
+  a 1M-context model on Copilot — copilot-bridge passes its 1M window through
+  in `/v1/models`, so **no `[1m]` alias is needed** (and `claude-opus-4.8-[1m]`
+  would actually 400, since there's no `claude-opus-4.8-1m` upstream). Pinned
+  in both `env.ANTHROPIC_MODEL` *and* the top-level `model` field so Claude
+  Code uses it on every launch with no `/model` toggle needed.
 - **Family-aware routing via env vars** (Sonnet and Opus are treated as
   separate families per personal convention — no `modelOverrides` map
   needed any more):
@@ -604,6 +625,7 @@ Defaults pinned globally (synced across machines via this repo):
     (Sonnet 4-5 / 4-6 / Sonnet-1M from the built-in `/model` picker)
     routes to `gpt-5.5`. Sonnet feels mid-tier, so we map it to the
     mid-tier Copilot model rather than paying for a full Opus call.
+    `gpt-5.5` is itself a ~1M-context model upstream.
   - **`ANTHROPIC_DEFAULT_HAIKU_MODEL: gpt-5.5`** — Haiku tier for current
     Claude Code versions. Covers `Agent({ model: "haiku" })` sub-agents
     plus every Haiku-tier side-task (titles, summaries, compaction,
@@ -615,8 +637,8 @@ Defaults pinned globally (synced across machines via this repo):
     Haiku/small-fast tier. Kept for older Claude Code versions that don't
     yet read `*_DEFAULT_HAIKU_MODEL`. Pinning to `gpt-5.5` silences
     `400 model_not_supported` either way.
-  - **Opus** aliases (4-5 / 4-6 / 4-7) just inherit the top-level
-    `model` value above — `claude-opus-4.7-[1m]`.
+  - **Opus** aliases (4-5 / 4-6 / 4-7 / 4-8) just inherit the top-level
+    `model` value above — `claude-opus-4.8`.
 - **Effort: `xhigh`** — applied two ways:
   `effortLevel: "xhigh"` (Claude Code's client-side reasoning budget,
   applied to every session) and `MODEL_REASONING_EFFORT: xhigh` (read
@@ -663,7 +685,7 @@ One-time setup (after running `install.sh` on a fresh box):
 npm install -g @anthropic-ai/claude-code betahi-copilot-bridge
 copilot-bridge auth                  # browser device-code login (GitHub)
 copilot-bridge start --no-claude-setup --no-codex-setup   # leave running on port 4142
-claude                            # in another shell — uses Opus 4.7 1M @ max effort
+claude                            # in another shell — uses Opus 4.8 1M @ xhigh effort
 ```
 
 > **Caveat:** Claude Code rewrites `settings.json` at runtime to add fields

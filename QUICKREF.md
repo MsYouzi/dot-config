@@ -71,8 +71,9 @@ creates symlinks into `$HOME` (and `~/.oh-my-zsh/custom/`).
   when you change a color, update every file in this directory.
   See `themes/apollo/README.md` for per-editor install snippets.
 - `<repo>/copilot/<file>` — files linked to `$HOME/.copilot/<file>`. Currently:
-  - `settings.json` — Copilot CLI settings (model: `gpt-5.5`, effort
-    `xhigh`, `contextTier: long_context`, theme `dark`, `keepAlive: busy`,
+  - `settings.json` — Copilot CLI settings (model: `gpt-5.5`,
+    `contextTier: long_context` = 1M context, effort `xhigh`, theme `dark`,
+    `keepAlive: busy`,
     `continueOnAutoMode: true`, custom footer/status line). The `statusLine` block only
     takes a single `padding` field — per-side spacing is done in
     `statusline.sh` (newlines for top, leading spaces for left). Note:
@@ -121,18 +122,25 @@ creates symlinks into `$HOME` (and `~/.oh-my-zsh/custom/`).
     `fmt_dhm`). Controlled by `COPILOT_STATUSLINE_MAX_SUBAGENTS=N`
     (default 8) and `COPILOT_STATUSLINE_SUBAGENT_ROOT=0` to hide the
     root "main" row.
+  - `cleanup-legacy.sh` — executable cleanup hook for Copilot CLI upgrades.
+    Keeps only the current `~/.copilot/pkg/<platform>/<version>` payload
+    (detected from `copilot --version`), removes older package versions,
+    empty pkg dirs, `.DS_Store`, `*.bak.*`, and all but the newest
+    `logs/process-*.log`. `install.sh` runs it after linking Copilot files;
+    `oh-my-zsh-custom/copilot.zsh` runs it after successful `copilot update`.
   - `copilot-instructions.md` — global agent instructions (autonomous mode).
 - `<repo>/claude/<file>` — files linked to `$HOME/.claude/<file>`. Currently:
   - `settings.json` — Claude Code → Copilot bridge AND global default-pinning.
     Sets `ANTHROPIC_BASE_URL=http://127.0.0.1:4142`,
     `ANTHROPIC_AUTH_TOKEN=dummy` (copilot-bridge expects the token form,
-    not `ANTHROPIC_API_KEY`), and pins **Opus 4.7 1M @ xhigh effort** as the
+    not `ANTHROPIC_API_KEY`), and pins **Opus 4.8 @ xhigh effort** as the
     global default for every machine that runs `install.sh`:
-    `ANTHROPIC_MODEL=claude-opus-4.7-[1m]` AND top-level
-    `model=claude-opus-4.7-[1m]` (both required so Claude Code uses it
-    on launch with no `/model` toggle; the bracket form is Claude Code's
-    UI-friendly alias that copilot-bridge maps to `claude-opus-4.7-1m`
-    upstream), `effortLevel="xhigh"` (deepest reasoning client-side, no
+    `ANTHROPIC_MODEL=claude-opus-4.8` AND top-level
+    `model=claude-opus-4.8` (both required so Claude Code uses it
+    on launch with no `/model` toggle; base `claude-opus-4.8` is natively a
+    1M-context model upstream — copilot-bridge passes its 1M window through in
+    `/v1/models`, so no `[1m]` alias is needed), `effortLevel="xhigh"`
+    (deepest reasoning client-side, no
     `/effort` needed) plus `MODEL_REASONING_EFFORT=xhigh` (read by
     copilot-bridge per-request and forwarded to Copilot). **Family-aware
     routing** is now done via two env vars instead of the old
@@ -140,7 +148,8 @@ creates symlinks into `$HOME` (and `~/.oh-my-zsh/custom/`).
     families per personal convention):
     `ANTHROPIC_DEFAULT_SONNET_MODEL=gpt-5.5` (every Sonnet alias —
     4-5 / 4-6 / Sonnet-1M — routes to `gpt-5.5`, the mid-tier Copilot
-    model), `ANTHROPIC_DEFAULT_HAIKU_MODEL=gpt-5.5` (read by current
+    model, itself a ~1M-context model),
+    `ANTHROPIC_DEFAULT_HAIKU_MODEL=gpt-5.5` (read by current
     Claude Code; covers `Agent({model:"haiku"})` sub-agents and
     every Haiku-tier side-task), and `ANTHROPIC_SMALL_FAST_MODEL=gpt-5.5`
     (legacy alias for the same Haiku/small-fast tier, kept for older
@@ -182,6 +191,9 @@ creates symlinks into `$HOME` (and `~/.oh-my-zsh/custom/`).
   `$HOME/.oh-my-zsh/custom/<file>`. Currently:
   - `custom.zsh` — aliases, proxy helpers (`enable_proxy`/`disable_proxy`),
     brew completions, `PATH` extras (`.NET`, Android SDK).
+  - `copilot.zsh` — wraps `copilot update` so a successful update runs
+    `~/.copilot/cleanup-legacy.sh`, pruning stale CLI package payloads
+    left by previous upgrades.
   - `gg.zsh` — defines `gg <title>` which sets the active terminal's tab +
     window title via OSC 1/2 escapes (works bare in WezTerm, iTerm2, …)
     AND, when `$TMUX` is set, calls `tmux rename-window` so tmux's
@@ -206,7 +218,8 @@ creates symlinks into `$HOME` (and `~/.oh-my-zsh/custom/`).
    `.DS_Store` — both pre-existing, harmless on macOS).
 3. Symlinks every file in `oh-my-zsh-custom/` to `~/.oh-my-zsh/custom/`.
    Skipped (with a warning) if `~/.oh-my-zsh/custom/` does not exist.
-4. Symlinks every file in `copilot/` to `~/.copilot/`.
+4. Symlinks every file in `copilot/` to `~/.copilot/`, then runs
+   `cleanup-legacy.sh` to prune stale Copilot CLI package versions/logs.
    Skipped (with a warning) if `~/.copilot/` does not exist.
 5. Symlinks every file in `claude/` to `~/.claude/`. **Creates the
    destination directory if missing** (Claude Code only creates `~/.claude/`
