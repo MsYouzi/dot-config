@@ -46,6 +46,7 @@ dot-configs/
 ├── .copilot-relay/              # secret-free relay config -> ~/.copilot-relay/
 │   └── config.yaml              # model routing, effort, logging, claudeSetup=false
 ├── themes/apollo/               # Apollo theme (wezterm/vim/nvim/vscode/wt) — reference, not auto-linked
+│   └── statusline-palette.sh    # EXCEPTION: sourced at runtime by both statuslines
 ├── launchd/                     # macOS launchd agent templates
 │   ├── com.d0n9x1n.copilot-relay.plist     # copilot-relay proxy on login (rendered by install.sh)
 │   ├── com.d0n9x1n.copilot-relay-healthcheck.plist  # relay watchdog (liveness + deep)
@@ -667,7 +668,10 @@ statusline redraw.
 
 Executable script — a "full mirror" of `~/.claude/statusline.sh` adapted to
 Copilot's `statusLine` JSON. Per-segment Catppuccin color accents and
-color-graded Context %. Default layout is five lines: L1 time/run/req/wakatime,
+color-graded Context %. The accents are defined once in
+`themes/apollo/statusline-palette.sh` and sourced by both statuslines, so the
+two cannot drift apart and an upstream pull that retunes Gruvbox does not change
+what renders. Default layout is five lines: L1 time/run/req/wakatime,
 L2 model/effort/context, L3 mcp/skills/agents/tasks/style, L4 cwd path, L5
 repo/branch/diff/stash/worktree. The default icon accent lattice avoids using
 the same color for adjacent segments or for segments in the same visual column.

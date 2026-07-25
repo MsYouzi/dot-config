@@ -39,6 +39,15 @@ grep '^theme' .sonicterm/sonicterm.toml     # -> theme = "catppuccin-mocha"
 
 # 4. Config still parses
 python3 -c "import tomllib;[tomllib.load(open(p,'rb')) for p in ['.sonicterm/sonicterm.toml','.sonicterm/themes/catppuccin-mocha.toml','.sonicterm/themes/wezterm.toml']];print('toml ok')"
+
+# 5. Statuslines still render the fork's Catppuccin palette, not upstream's
+#    Gruvbox. Checks what is ACTUALLY EMITTED, so it stays valid however
+#    upstream rewrote its own defaults.
+for f in claude copilot; do
+  printf '%s: ' "$f"
+  printf '{}' | bash "$f/statusline.sh" | grep -qE '38;2;(205;214;244|249;226;175|137;180;250)' \
+    && echo "mocha ok" || echo "FAIL — check themes/apollo/statusline-palette.sh is sourced"
+done
 ```
 
 **Why `.sonicterm/` is safe and the rest is not.** The palette used to live
@@ -100,19 +109,29 @@ colors.** Upstream owns behavior; the fork owns the palette.
 | `.sonicterm/themes/wezterm.toml` | nothing — upstream's | take upstream wholesale (`git checkout --theirs`) |
 | `.sonicterm/themes/catppuccin-mocha.toml` | fork-only file | upstream cannot touch it; keep as-is |
 | `.sonicterm/sonicterm.toml` | `theme =` line only | keep the fork's `theme = "catppuccin-mocha"`, take upstream's other hunks |
+| `claude/statusline.sh` | nothing in the color block — upstream's | take upstream wholesale; keep the fork's palette-override hook after the `fi` |
+| `copilot/statusline.sh` | same | same |
+| `themes/apollo/statusline-palette.sh` | fork-only file | upstream cannot touch it; keep as-is |
 | `.tmux.conf` | Catppuccin status colors | take upstream's bindings/options, re-apply fork colors |
 | `wezterm/wezterm.lua` | `color_scheme`, `background`, tab-bar colors | take upstream's logic, re-apply fork colors |
-| `claude/statusline.sh` | Catppuccin segment accents | take upstream's segment logic, re-apply fork accents |
-| `copilot/statusline.sh` | same | same — and keep it aligned with the Claude one |
-| `themes/apollo/*` | whole Catppuccin palette | fork-owned; keep the fork's version |
+| `themes/apollo/*` (rest) | whole Catppuccin palette | fork-owned; keep the fork's version |
+
+**The statuslines no longer need hand-repair.** Their `C_*`/`CB_*` blocks are
+kept byte-identical to upstream, and both scripts source
+`themes/apollo/statusline-palette.sh` immediately afterwards to reassign those
+variables. Upstream can retune its Gruvbox freely: the merge is clean, the new
+defaults land in the file, and the fork's Mocha still wins at runtime. So take
+upstream's version of any conflicting hunk *inside* the color block — do not
+hand-port colors back in.
 
 Two repo rules that bite during this phase:
 
 - **The two statuslines must stay functionally aligned.** Same segments, same
-  output shape, same per-cwd git cache. The one intentional difference: Claude's
-  has **no** live-subagent rendering (Claude Code ships its own UI); Copilot's
-  keeps both the inline count and the agent tree. If upstream changes one
-  statusline, port the change to the other rather than letting them drift.
+  output shape, same per-cwd git cache. Colors are now aligned structurally
+  (one shared palette file), so what needs watching is *logic*. The one
+  intentional difference: Claude's has **no** live-subagent rendering (Claude
+  Code ships its own UI); Copilot's keeps both the inline count and the agent
+  tree. If upstream changes one statusline's logic, port it to the other.
 - **`launchd/*.plist` are templates**, not symlinks. If upstream edits one,
   `install.sh` must re-render it (`__HOME__`, `__SRC_DIR__`) — a merge alone
   does not update `~/Library/LaunchAgents/`.

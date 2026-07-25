@@ -40,9 +40,13 @@ Personal dotfiles, synced across machines via git + symlinks. macOS-only;
   `~/.config/github-copilot/mcp.json` per device — install.sh's merge
   step preserves it.
 - **`claude/statusline.sh` and `copilot/statusline.sh` must stay
-  functionally aligned.** Same segments, same output shape, same Catppuccin
-  palette, same per-cwd 5s git cache. When you change one, port the
-  change to the sibling. **Known intentional divergence (do not "re-align"
+  functionally aligned.** Same segments, same output shape, same per-cwd 5s git
+  cache. When you change one, port the change to the sibling. **Colors are no
+  longer part of that manual duty:** both scripts keep upstream's `C_*`/`CB_*`
+  block byte-identical and source `themes/apollo/statusline-palette.sh` right
+  after it, so the palette is shared structurally and cannot drift. Edit colors
+  **there**, never inline — inline edits re-create the upstream collision the
+  split exists to remove. **Known intentional divergence (do not "re-align"
   away):** Claude's statusline has NO live-subagent renderings — neither the
   inline `subagents`/`Tasks` count nor the bottom live-agent tree — because
   Claude Code ships its own native subagent UI. Copilot keeps both, and its
@@ -83,9 +87,14 @@ Personal dotfiles, synced across machines via git + symlinks. macOS-only;
   match the theme name — the two-file split is deliberate and is what keeps
   upstream pulls conflict-free. Verify with
   `git diff source/main -- .sonicterm/themes/wezterm.toml` (must be empty).
-  Note the rest of the repo (`.tmux.conf`, `wezterm/wezterm.lua`, both
-  statuslines, `themes/apollo/*`) is still Catppuccin-diverged in place and
-  will conflict on upstream pulls; that was scoped out deliberately.
+  **The statuslines are protected the same way:** their `C_*`/`CB_*` blocks are
+  byte-identical to upstream and the fork's colors live in
+  `themes/apollo/statusline-palette.sh`, sourced after the block. Verify with
+  `git diff source/main -- claude/statusline.sh` — the only hunk should be the
+  palette-override block after the `fi`.
+  Note `.tmux.conf`, `wezterm/wezterm.lua`, and the rest of `themes/apollo/*`
+  are still Catppuccin-diverged in place and will conflict on upstream pulls;
+  that was scoped out deliberately.
 - **Skills live once, in `claude/skills/`, and serve both runtimes.**
   `install.sh` links each `claude/skills/<name>/` into **both**
   `~/.claude/skills/<name>/` and `~/.copilot/skills/<name>/`. Copilot CLI reads

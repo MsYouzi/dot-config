@@ -142,7 +142,11 @@ creates symlinks into `$HOME` (and `~/.oh-my-zsh/custom/`).
     spurious diffs.
   - `statusline.sh` — executable script printing the custom status line.
     A "full mirror" of `~/.claude/statusline.sh`: five-line default layout
-    with per-segment Catppuccin accents and color-graded Context %. Renders
+    with per-segment Catppuccin accents and color-graded Context %. Accents
+    come from `themes/apollo/statusline-palette.sh`, sourced by **both**
+    statuslines right after upstream's inline `C_*` block (which is kept
+    byte-identical to `source/main` so upstream pulls never conflict). Edit
+    colors in the palette file, not inline. Renders
     `<icon> <Label> <value>` separated by `│`: L1 time/run/req/wakatime,
     L2 model/effort/context, L3 mcp/skills/agents/tasks/style, L4 cwd path,
     L5 repo/branch/diff/stash/worktree. Default icon accent colors are arranged

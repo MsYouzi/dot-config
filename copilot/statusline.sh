@@ -3,7 +3,7 @@
 #
 # Sibling of ~/.claude/statusline.sh — same vibe (one Nerd-Font-iconed
 # segment per data point, separated by Unicode bars), each segment gets
-# its own Catppuccin accent color so the value pops out from the colored
+# its own Gruvbox accent color so the value pops out from the colored
 # icon + label pair to its left. This is a "full mirror" of the Claude
 # version: every segment Claude shows is reproduced here when the data
 # is exposed by Copilot's statusLine JSON, plus a few Copilot-only
@@ -145,26 +145,63 @@ ICON_SUBAGENT_ROOT=$'\xef\x84\xa0'
 ICON_SUBAGENT=$'\xef\x83\x90'
 ICON_MODE=$'\xef\x82\x85'
 
-# Catppuccin Mocha accents — match wezterm/.tmux.conf/sonicterm palette.
+# Gruvbox Dark Hard accents — match alacritty/wezterm/.tmux.conf palette.
 # Use 24-bit ANSI so we don't depend on the terminal's 256-color cube.
 # Honor both COPILOT_STATUSLINE_NO_COLOR (preferred) and the legacy
 # COPILOT_STATUSLINE_NO_DIM as an alias for backwards-compat.
 if [ -z "${COPILOT_STATUSLINE_NO_COLOR:-}" ] && [ -z "${COPILOT_STATUSLINE_NO_DIM:-}" ]; then
   C_RESET=$'\033[0m'
   C_DIM=$'\033[2m'                                # dim for separator + labels
-  C_RED=$'\033[38;2;243;139;168m'                 # #f38ba8 — mocha red
-  C_GREEN=$'\033[38;2;166;227;161m'               # #a6e3a1 — mocha green
-  C_YELLOW=$'\033[38;2;249;226;175m'              # #f9e2af — mocha yellow
-  C_BLUE=$'\033[38;2;137;180;250m'                # #89b4fa — mocha blue
-  C_PURPLE=$'\033[38;2;203;166;247m'              # #cba6f7 — mocha mauve
-  C_AQUA=$'\033[38;2;148;226;213m'                # #94e2d5 — mocha teal
-  C_ORANGE=$'\033[38;2;250;179;135m'              # #fab387 — mocha peach
-  C_FG=$'\033[38;2;205;214;244m'                  # #cdd6f4 — mocha text
-  C_FG_DIM=$'\033[38;2;166;173;200m'              # #a6adc8 — mocha subtext0
+  C_RED=$'\033[38;2;251;73;52m'                   # #fb4934
+  C_GREEN=$'\033[38;2;184;187;38m'                # #b8bb26
+  C_YELLOW=$'\033[38;2;250;189;47m'               # #fabd2f
+  C_BLUE=$'\033[38;2;131;165;152m'                # #83a598
+  C_PURPLE=$'\033[38;2;211;134;155m'              # #d3869b
+  C_AQUA=$'\033[38;2;142;192;124m'                # #8ec07c
+  C_ORANGE=$'\033[38;2;254;128;25m'               # #fe8019
+  C_FG=$'\033[38;2;235;219;178m'                  # #ebdbb2
+  C_FG_DIM=$'\033[38;2;168;153;132m'              # #a89984 — gruvbox fg3
 else
   C_RESET=""; C_DIM=""; C_RED=""; C_GREEN=""; C_YELLOW=""; C_BLUE=""
   C_PURPLE=""; C_AQUA=""; C_ORANGE=""; C_FG=""
   C_FG_DIM=""
+fi
+
+# Fork-local palette override. Everything above is upstream's (Gruvbox Dark
+# Hard) and is deliberately left byte-identical to the `source` remote so
+# upstream pulls never conflict here. This fork is Catppuccin Mocha, so the
+# palette is re-assigned from themes/apollo/statusline-palette.sh — the same
+# file claude/statusline.sh sources, which is what keeps the two in lockstep.
+#
+# Guarded on $C_RESET rather than re-testing the NO_COLOR/NO_DIM pair above:
+# the else-branch blanks it, so a non-empty value means "colors are on"
+# whatever condition upstream used. NO_COLOR output therefore stays uncolored.
+# Missing file (script copied without the repo) => upstream's Gruvbox. Degraded,
+# never broken. See the palette file's header for the full rationale.
+if [ -n "$C_RESET" ]; then
+  # Resolve this script to its real path. install.sh creates an ABSOLUTE
+  # symlink (~/.copilot/statusline.sh -> <repo>/copilot/statusline.sh), but
+  # resolve relative targets and symlink chains too: getting this wrong fails
+  # silently back to upstream's Gruvbox, which is the exact bug this design
+  # exists to prevent. `readlink -f` is not portable (BSD readlink lacks -f on
+  # older macOS), so walk the chain by hand. Bounded to 10 hops so a symlink
+  # loop cannot hang the statusline.
+  __sl_self="${BASH_SOURCE[0]:-$0}"
+  __sl_hops=0
+  while [ -L "$__sl_self" ] && [ "$__sl_hops" -lt 10 ]; do
+    __sl_dir="${__sl_self%/*}"
+    __sl_self="$(readlink "$__sl_self")"
+    case "$__sl_self" in
+      /*) ;;                                  # absolute — use as-is
+      *) __sl_self="${__sl_dir}/${__sl_self}" ;;  # relative — against link's dir
+    esac
+    __sl_hops=$((__sl_hops + 1))
+  done
+  __sl_repo="$(cd "${__sl_self%/*}/.." 2>/dev/null && pwd)"
+  __sl_palette="${__sl_repo}/themes/apollo/statusline-palette.sh"
+  # shellcheck source=../themes/apollo/statusline-palette.sh
+  [ -r "$__sl_palette" ] && . "$__sl_palette"
+  unset __sl_self __sl_dir __sl_hops __sl_repo __sl_palette
 fi
 
 # Per-side padding emitted from inside the script. Copilot CLI's
