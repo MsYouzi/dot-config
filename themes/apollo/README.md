@@ -1,7 +1,7 @@
 # Apollo
 
-A warm-dark color theme. Gruvbox dark hard base + Material's warm beige
-ANSI 7 (`#d4be98`) + a deeper canvas (`#141617`) for higher contrast.
+A cool-dark color theme. Catppuccin Mocha base + a deeper canvas
+(`#11111b` / crust, below the scheme's own `#1e1e2e`) for higher contrast.
 
 See `PALETTE.md` for the full color table — single source of truth for
 every file in this directory.

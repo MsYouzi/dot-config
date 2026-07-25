@@ -66,7 +66,7 @@ creates symlinks into `$HOME` (and `~/.oh-my-zsh/custom/`).
 - `.claude/CLAUDE.md` — agent instructions for Claude Code working in
   this repo. Mirrors `.github/copilot-instructions.md`.
 - `<repo>/.<name>` — root dotfiles linked to `$HOME/.<name>`. Currently:
-  - `.tmux.conf` — primary tab/split/session manager (Gruvbox Dark Hard
+  - `.tmux.conf` — primary tab/split/session manager (Catppuccin Mocha
     palette, prefix `C-q` (chosen over default C-b for ergonomics — far
     from C-c/d/z, doesn't clash with readline, and modern macOS disables
     the legacy C-q XON flow control), mouse on, top status bar, vim-style
@@ -93,9 +93,10 @@ creates symlinks into `$HOME` (and `~/.oh-my-zsh/custom/`).
     `tmux -f .tmux.conf -L _v new-session -d -s _v ; tmux -L _v kill-server`.
 - `<repo>/wezterm/wezterm.lua` — terminal config, auto-linked by `install.sh`
   to `~/.wezterm.lua`. The `wezterm` cask is auto-installed too.
-  Config uses `color_scheme = "Gruvbox dark, hard (base16)"` with
-  `config.colors.background = "#141617"` (slightly darker than the stock
-  Hard `#1d2021`), `inactive_pane_hsb = {1,1,1}` (no inactive-pane
+  Config uses `color_scheme = "Catppuccin Mocha"` (WezTerm builtin) with
+  `config.colors.background = "#11111b"` (Catppuccin `crust`, one step
+  below the scheme's own `#1e1e2e` base), `inactive_pane_hsb = {1,1,1}`
+  (no inactive-pane
   dimming), and the custom tab-bar `BAR_BG` derived from the active
   background so the tab strip auto-aligns when the bg changes.
 - `<repo>/.sonicterm/` — SonicTerm terminal config, auto-linked by
@@ -104,7 +105,7 @@ creates symlinks into `$HOME` (and `~/.oh-my-zsh/custom/`).
   runtime `logs/` and backup files remain machine-local.
   Current config pins theme `wezterm`, keymap `sonicterm-macos`, Rec Mono
   St.Helens 14 / line-height 1.2, `TERM_PROGRAM=WezTerm`, 1000-line scrollback,
-  no cursor blink, software render mode auto, Gruvbox/WezTerm-aligned theme
+  no cursor blink, software render mode auto, Catppuccin/WezTerm-aligned theme
   colors, and WezTerm-compatible macOS/Linux/Windows keymaps.
 - `<repo>/.copilot-relay/config.yaml` — secret-free relay config linked by
   `install.sh` to `~/.copilot-relay/config.yaml`. Pins `claudeSetup: false`,
@@ -112,7 +113,7 @@ creates symlinks into `$HOME` (and `~/.oh-my-zsh/custom/`).
   and `opusModel: claude-opus-5`. Do **not** commit
   `~/.copilot-relay/github_token`, `copilot_token.json`, or `logs/`.
 - `<repo>/themes/apollo/` — **reference theme files; NOT auto-linked**.
-  Apollo = Gruvbox hard + Material warm-beige ANSI 7 + `#141617` canvas.
+  Apollo = Catppuccin Mocha + `#11111b` crust canvas.
   Ships matched colorschemes for WezTerm (`apollo.lua`), Vim
   (`apollo.vim`), Neovim (`apollo.nvim.lua`), VS Code
   (`apollo-color-theme.json`), and Windows Terminal
@@ -133,7 +134,7 @@ creates symlinks into `$HOME` (and `~/.oh-my-zsh/custom/`).
     spurious diffs.
   - `statusline.sh` — executable script printing the custom status line.
     A "full mirror" of `~/.claude/statusline.sh`: five-line default layout
-    with per-segment Gruvbox accents and color-graded Context %. Renders
+    with per-segment Catppuccin accents and color-graded Context %. Renders
     `<icon> <Label> <value>` separated by `│`: L1 time/run/req/wakatime,
     L2 model/effort/context, L3 mcp/skills/agents/tasks/style, L4 cwd path,
     L5 repo/branch/diff/stash/worktree. Default icon accent colors are arranged

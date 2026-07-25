@@ -8,8 +8,8 @@
 [![Repo size](https://img.shields.io/github/repo-size/D0n9X1n/dot-config?color=d3869b)](https://github.com/D0n9X1n/dot-config)
 [![Platform](https://img.shields.io/badge/platform-macOS-1d2021?logo=apple&logoColor=ebdbb2)](#)
 [![Made with Bash](https://img.shields.io/badge/made%20with-bash-fabd2f?logo=gnubash&logoColor=1d2021)](#)
-[![ShellCheck](https://img.shields.io/badge/lint-shellcheck-8ec07c?logo=gnubash&logoColor=1d2021)](https://www.shellcheck.net/)
-[![Gruvbox](https://img.shields.io/badge/theme-gruvbox%20dark%20hard-fb4934)](#)
+[![ShellCheck](https://img.shields.io/badge/lint-shellcheck-94e2d5?logo=gnubash&logoColor=11111b)](https://www.shellcheck.net/)
+[![Catppuccin](https://img.shields.io/badge/theme-catppuccin%20mocha-cba6f7)](#)
 
 Personal dotfiles repository. Single source of truth for shell, terminal, and
 editor configuration; synced across machines via git + an idempotent installer
@@ -41,7 +41,7 @@ dot-configs/
 ├── .sonicterm/                  # tracked TOML config -> ~/.sonicterm/
 │   ├── sonicterm.toml           # SonicTerm config
 │   ├── keymaps/                 # WezTerm-compatible keymaps
-│   └── themes/                  # Gruvbox/WezTerm-aligned themes
+│   └── themes/                  # Catppuccin/WezTerm-aligned themes
 ├── .copilot-relay/              # secret-free relay config -> ~/.copilot-relay/
 │   └── config.yaml              # model routing, effort, logging, claudeSetup=false
 ├── themes/apollo/               # Apollo theme (wezterm/vim/nvim/vscode/wt) — reference, not auto-linked
@@ -345,7 +345,7 @@ Then restart Claude Code; `/mcp` should show `github ✓ ready`.
 
 ```bash
 ls -l ~/.wezterm.lua
-# Open WezTerm; verify Gruvbox dark hard scheme is active.
+# Open WezTerm; verify Catppuccin Mocha scheme is active.
 ```
 
 ### 8.5. Optional: Apollo theme (wezterm / vim / neovim / vscode / windows terminal)
@@ -367,7 +367,7 @@ mkdir -p ~/.config/nvim/colors
 ln -sfn "$THEMES/apollo.nvim.lua" ~/.config/nvim/colors/apollo.lua
 # then in init.lua:  vim.cmd('colorscheme apollo')
 
-# WezTerm — already wired via wezterm/wezterm.lua (#141617 bg). To use
+# WezTerm — already wired via wezterm/wezterm.lua (#11111b bg). To use
 # the standalone scheme instead, in wezterm.lua:
 #   local apollo = dofile(os.getenv("HOME") .. "/Public/dot-configs/themes/apollo/apollo.lua")
 #   config.color_schemes = { Apollo = apollo }
@@ -420,7 +420,7 @@ claude --print "say 'hello from devbox'" 2>&1 | head -5
 If all 10 steps print `ok` (or the equivalent positive signal), the box is
 fully set up. The `gg [title]` function, the statusline (5-line layout
 with git/branch/cost/ctx/agents/skills segments), the dark-ansi Claude Code
-theme, and the Gruvbox-aligned tmux/wezterm chrome are all live.
+theme, and the Catppuccin-aligned tmux/wezterm chrome are all live.
 
 ### Platform notes
 
@@ -506,8 +506,7 @@ Implementation notes:
 The terminal config is kept in-repo and auto-linked by `install.sh` to
 `~/.wezterm.lua`.
 
-Highlights of the in-repo config: `color_scheme = "Gruvbox dark, hard
-(base16)"`, Rec Mono St.Helens, custom 5-row "floating tabs" with Nerd
+Highlights of the in-repo config: `color_scheme = "Catppuccin Mocha"`, Rec Mono St.Helens, custom 5-row "floating tabs" with Nerd
 Font process icons and a Knight-Rider loading bar for vibe-coding
 sessions, DPI-adaptive font weight, FreeType fine-tuning, smart `Cmd+C`
 (copy if selection else SIGINT), `inactive_pane_hsb = {1,1,1}` (no
@@ -523,7 +522,7 @@ SonicTerm's `logs/` directory and runtime backup files remain local.
 
 The tracked config uses the `wezterm` theme, `sonicterm-macos` keymap, Rec Mono
 St.Helens 14 with line-height 1.2, `TERM_PROGRAM=WezTerm`, 1000-line scrollback,
-no cursor blink, opaque Gruvbox Dark Hard chrome, software render mode auto, and
+no cursor blink, opaque Catppuccin Mocha chrome, software render mode auto, and
 WezTerm-compatible keymaps for macOS/Linux/Windows.
 
 ### copilot-relay (`.copilot-relay/`)
@@ -543,7 +542,7 @@ Primary tab/split/session manager. Linked to `~/.tmux.conf` by `install.sh`.
 
 | Setting | Value |
 |---|---|
-| Theme | hand-rolled Gruvbox Dark Hard palette (matches WezTerm) |
+| Theme | hand-rolled Catppuccin Mocha palette (matches WezTerm) |
 | Prefix | `C-q` (chosen over default C-b for ergonomics — far from C-c/d/z, doesn't clash with readline, modern macOS disables the legacy C-q XON flow control so nothing reclaims the keystroke; press `prefix + C-q` to send a literal `C-q` to the active pane) |
 | `default-terminal` | `tmux-256color` + `RGB` overrides for `wezterm`, `xterm-256color`, `*-direct`; `terminal-features … :RGB` so tmux 3.2+ actually advertises truecolor (without it tmux silently downsamples to the 256-color cube) |
 | Env scrubbing | `set-environment -gu TERMINFO TERMINFO_DIRS TERMCAP TERM_PROGRAM TERM_PROGRAM_VERSION` + `set -g COLORTERM truecolor` — defends against long-lived tmux servers inheriting dead `$TERMINFO` from previously installed terminals (which otherwise silently degrades panes from `tmux-256color` to `xterm-color` and breaks Copilot CLI's truecolor input panel). **Recovery for an already-poisoned server**: save state with `prefix + Ctrl-s`, then `tmux kill-server` from a non-tmux shell. |
@@ -575,7 +574,7 @@ Status bar segments:
 
 - **Left**: yellow pill with the current session name (`#S`).
 - **Window list**: inactive in dim grey on bg0; active in dark text on a
-  Gruvbox bright-blue pill, plus a magnifier when zoomed
+  Catppuccin blue pill, plus a magnifier when zoomed
   (`#{?window_zoomed_flag, ,}`).
 - **Right**: prefix indicator (only while the prefix is held, in red),
   `HH:MM`, vertical bar, and `YYYY-MM-DD`.
@@ -623,7 +622,7 @@ statusline redraw.
 #### `statusline.sh`
 
 Executable script — a "full mirror" of `~/.claude/statusline.sh` adapted to
-Copilot's `statusLine` JSON. Per-segment Gruvbox color accents and
+Copilot's `statusLine` JSON. Per-segment Catppuccin color accents and
 color-graded Context %. Default layout is five lines: L1 time/run/req/wakatime,
 L2 model/effort/context, L3 mcp/skills/agents/tasks/style, L4 cwd path, L5
 repo/branch/diff/stash/worktree. The default icon accent lattice avoids using
@@ -781,7 +780,7 @@ Defaults pinned globally (synced across machines via this repo):
 - `editorMode`: not pinned. `statusLine.refreshInterval: 100` drops the
   redraw cadence so the statusline updates feel snappy.
 - `theme: "dark-ansi"` lets the chrome inherit the terminal's ANSI palette
-  (so it tracks the WezTerm Gruvbox scheme rather than hard-coding its
+  (so it tracks the WezTerm Catppuccin scheme rather than hard-coding its
   own colors).
 
 #### Native concurrent-subagent limit

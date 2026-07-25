@@ -40,7 +40,7 @@ Personal dotfiles, synced across machines via git + symlinks. macOS-only;
   `~/.config/github-copilot/mcp.json` per device — install.sh's merge
   step preserves it.
 - **`claude/statusline.sh` and `copilot/statusline.sh` must stay
-  functionally aligned.** Same segments, same output shape, same Gruvbox
+  functionally aligned.** Same segments, same output shape, same Catppuccin
   palette, same per-cwd 5s git cache. When you change one, port the
   change to the sibling. **Known intentional divergence (do not "re-align"
   away):** Claude's statusline has NO live-subagent renderings — neither the
@@ -89,8 +89,8 @@ Personal dotfiles, synced across machines via git + symlinks. macOS-only;
 
 ### Config files
 
-- Color scheme: **Gruvbox dark hard (base16)** in WezTerm; matching
-  Gruvbox accents in tmux + statusline.
+- Color scheme: **Catppuccin Mocha** (WezTerm builtin); matching
+  Catppuccin accents in tmux + statusline.
 - Statusline label icons are **FontAwesome** glyphs (U+F0xx–F2xx),
   rendered via raw UTF-8 bytes in bash (since bash 3.2 doesn't support
   `\u`).

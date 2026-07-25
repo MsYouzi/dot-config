@@ -1,5 +1,5 @@
 -- Apollo colorscheme for Neovim
--- Gruvbox dark hard base + Material warm beige + darker canvas (#141617).
+-- Catppuccin Mocha base + deeper crust canvas (#11111b).
 -- Install: place in ~/.config/nvim/colors/apollo.lua (or any colors/ on rtp)
 -- Use:     vim.cmd('colorscheme apollo')
 
@@ -9,25 +9,25 @@ vim.o.background = 'dark'
 vim.g.colors_name = 'apollo'
 
 local p = {
-  bg      = '#141617',
-  bg1     = '#1d2021',
-  bg2     = '#3c3836',
-  fg      = '#ebdbb2',
-  fg_dim  = '#928374',
-  fg2     = '#d5c4a1',
-  red     = '#cc241d',
-  green   = '#98971a',
-  yellow  = '#d79921',
-  blue    = '#458588',
-  purple  = '#b16286',
-  aqua    = '#689d6a',
-  beige   = '#d4be98',
-  bred    = '#fb4934',
-  bgreen  = '#b8bb26',
-  byellow = '#fabd2f',
-  bblue   = '#83a598',
-  bpurple = '#d3869b',
-  baqua   = '#8ec07c',
+  bg      = '#11111b',
+  bg1     = '#181825',
+  bg2     = '#313244',
+  fg      = '#cdd6f4',
+  fg_dim  = '#6c7086',
+  fg2     = '#bac2de',
+  red     = '#f38ba8',
+  green   = '#a6e3a1',
+  yellow  = '#f9e2af',
+  blue    = '#89b4fa',
+  purple  = '#f5c2e7',
+  aqua    = '#94e2d5',
+  beige   = '#bac2de',
+  bred    = '#f38ba8',
+  bgreen  = '#a6e3a1',
+  byellow = '#f9e2af',
+  bblue   = '#89b4fa',
+  bpurple = '#cba6f7',
+  baqua   = '#94e2d5',
 }
 
 local set = vim.api.nvim_set_hl
@@ -150,19 +150,19 @@ hl('GitSignsChange', { fg = p.byellow })
 hl('GitSignsDelete', { fg = p.bred })
 
 -- Terminal ANSI palette (for :term)
-vim.g.terminal_color_0  = '#1d2021'
-vim.g.terminal_color_1  = '#cc241d'
-vim.g.terminal_color_2  = '#98971a'
-vim.g.terminal_color_3  = '#d79921'
-vim.g.terminal_color_4  = '#458588'
-vim.g.terminal_color_5  = '#b16286'
-vim.g.terminal_color_6  = '#689d6a'
-vim.g.terminal_color_7  = '#d4be98'
-vim.g.terminal_color_8  = '#928374'
-vim.g.terminal_color_9  = '#fb4934'
-vim.g.terminal_color_10 = '#b8bb26'
-vim.g.terminal_color_11 = '#fabd2f'
-vim.g.terminal_color_12 = '#83a598'
-vim.g.terminal_color_13 = '#d3869b'
-vim.g.terminal_color_14 = '#8ec07c'
-vim.g.terminal_color_15 = '#ebdbb2'
+vim.g.terminal_color_0  = '#45475a'
+vim.g.terminal_color_1  = '#f38ba8'
+vim.g.terminal_color_2  = '#a6e3a1'
+vim.g.terminal_color_3  = '#f9e2af'
+vim.g.terminal_color_4  = '#89b4fa'
+vim.g.terminal_color_5  = '#f5c2e7'
+vim.g.terminal_color_6  = '#94e2d5'
+vim.g.terminal_color_7  = '#bac2de'
+vim.g.terminal_color_8  = '#6c7086'
+vim.g.terminal_color_9  = '#f38ba8'
+vim.g.terminal_color_10 = '#a6e3a1'
+vim.g.terminal_color_11 = '#f9e2af'
+vim.g.terminal_color_12 = '#89b4fa'
+vim.g.terminal_color_13 = '#cba6f7'
+vim.g.terminal_color_14 = '#94e2d5'
+vim.g.terminal_color_15 = '#cdd6f4'

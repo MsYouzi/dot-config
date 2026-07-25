@@ -24,42 +24,10 @@ config.front_end = "WebGpu"
 -- =========================================================
 -- Theme
 -- =========================================================
--- Custom scheme: GruvboxDarkHard base + Material's warm-beige slot 7
--- (#d4be98). Claude Code's `dark-ansi` theme paints the prompt-input
--- background with ANSI 7; Hard's stock #a89984 reads as gray, Material's
--- #d4be98 reads as warm cream. Keep everything else from Hard.
-config.color_schemes = {
-  ["GruvboxDarkHardWarm"] = {
-    foreground       = "#ebdbb2",
-    background       = "#1d2021",
-    cursor_bg        = "#ebdbb2",
-    cursor_fg        = "#1d2021",
-    cursor_border    = "#ebdbb2",
-    selection_fg     = "#ebdbb2",
-    selection_bg     = "#3c3836",
-    ansi = {
-      "#1d2021", -- 0  black
-      "#cc241d", -- 1  red
-      "#98971a", -- 2  green
-      "#d79921", -- 3  yellow
-      "#458588", -- 4  blue
-      "#b16286", -- 5  magenta
-      "#689d6a", -- 6  cyan
-      "#d4be98", -- 7  white  ← Material's warm beige (was #a89984)
-    },
-    brights = {
-      "#928374", -- 8  bright black
-      "#fb4934", -- 9  bright red
-      "#b8bb26", -- 10 bright green
-      "#fabd2f", -- 11 bright yellow
-      "#83a598", -- 12 bright blue
-      "#d3869b", -- 13 bright magenta
-      "#8ec07c", -- 14 bright cyan
-      "#ebdbb2", -- 15 bright white (soft fg)
-    },
-  },
-}
-config.color_scheme = "Gruvbox dark, hard (base16)"
+-- Catppuccin Mocha — WezTerm ships this scheme built in (verified present in
+-- 20240203-110809-5046fc22), so there is no custom color_schemes table to
+-- maintain here. Palette reference: https://catppuccin.com/palette/
+config.color_scheme = "Catppuccin Mocha"
 
 -- =========================================================
 -- Fonts
@@ -112,12 +80,13 @@ config.font_rules = {
 -- separator divides them. Foreground color alone signals state.
 --
 -- Pull the actual bg/fg from the active color scheme so swapping between
--- Gruvbox variants (dark hard / medium / Material) keeps the chrome
--- aligned automatically — no hex hunt required.
+-- Catppuccin flavors (mocha / macchiato / frappe) keeps the chrome aligned
+-- automatically — no hex hunt required.
 local SCHEME      = wezterm.color.get_builtin_schemes()[config.color_scheme] or {}
--- Override scheme bg with a slightly darker shade than Gruvbox hard's #1d2021
--- for a deeper canvas while keeping the warm Gruvbox tint.
-local DARK_BG     = "#141617"
+-- Canvas uses Catppuccin's `crust` (#11111b) — one step deeper than the
+-- scheme's `base` (#1e1e2e), same treatment the Gruvbox setup used when it
+-- dropped from #1d2021 to #141617.
+local DARK_BG     = "#11111b"
 local BAR_BG      = DARK_BG
 local TAB_BG      = BAR_BG
 
@@ -126,9 +95,9 @@ local INACTIVE_BG = TAB_BG
 local HOVER_BG    = TAB_BG
 local ACTIVE_BG   = TAB_BG
 
-local FG_DIM      = "#928374"  -- gruvbox neutral gray (inactive — quieter)
-local FG          = "#d5c4a1"  -- gruvbox fg2 (hover — slightly brighter)
-local FG_ACCENT   = "#fabd2f"  -- gruvbox bright yellow (active title)
+local FG_DIM      = "#6c7086"  -- catppuccin overlay0 (inactive — quieter)
+local FG          = "#bac2de"  -- catppuccin subtext1 (hover — slightly brighter)
+local FG_ACCENT   = "#f9e2af"  -- catppuccin yellow (active title)
 
 config.colors = {
   background = DARK_BG,
@@ -161,7 +130,7 @@ config.show_tab_index_in_tab_bar = false
 
 -- Fancy tab-bar height comes from window_frame.font_size. 16pt gives a
 -- comfortably tall bar without dwarfing terminal text. Chrome harmonised
--- with the bar so the whole title-bar area is one continuous Gruvbox surface.
+-- with the bar so the whole title-bar area is one continuous Catppuccin surface.
 config.window_frame = {
   -- Rec Mono St.Helens is itself a Nerd-patched font (verified via the
   -- font's name table: "Nerd Fonts 3.4.0"), so it already ships fa-bolt,
@@ -184,7 +153,7 @@ config.window_frame = {
 -- =========================================================
 -- Custom tab renderer (single-line, fancy-mode compatible)
 --   * 2-space horizontal padding on each side
---   * Active tab: bold + Gruvbox bright-yellow accent
+--   * Active tab: bold + Catppuccin yellow accent
 --   * Per-process Nerd Font icon prefix when detectable
 --   * "#N" tab-index prefix
 --   * Tabs auto-fit content (no min width padding); WezTerm caps at tab_max_width
@@ -231,7 +200,7 @@ wezterm.on("format-tab-title", function(tab, tabs, panes, cfg, hover, max_width)
   local fg = FG_DIM
   if is_active then
     bg = ACTIVE_BG
-    fg = FG_ACCENT  -- gruvbox bright yellow on active tab body
+    fg = FG_ACCENT  -- catppuccin yellow on active tab body
   elseif hover then
     bg = HOVER_BG
     fg = FG
@@ -304,10 +273,11 @@ end)
 -- =========================================================
 config.window_padding = { left = 8, right = 8, top = 8, bottom = 8 }
 
-config.inactive_pane_hsb = {
-  saturation = 0.7,
-  brightness = 0.4,
-}
+-- NOTE: inactive_pane_hsb is set once, in the Fonts section above ({1,1,1} —
+-- no dimming). A second assignment used to live here with
+-- {saturation=0.7, brightness=0.4}, which silently won (last write wins) and
+-- contradicted both the comment upstairs and QUICKREF. Removed — do not
+-- re-add a second assignment; edit the one above instead.
 
 -- =========================================================
 -- Keybindings

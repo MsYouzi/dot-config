@@ -3,7 +3,7 @@
 #
 # Sibling of ~/.copilot/statusline.sh — same vibe (one Nerd-Font-iconed
 # segment per data point, separated by Unicode bars), but each segment
-# gets its own Gruvbox accent color instead of a flat ANSI dim wrap, so
+# gets its own Catppuccin accent color instead of a flat ANSI dim wrap, so
 # the line pops a little more without screaming.
 #
 # Claude Code feeds this script a JSON payload on stdin. Schema reference:
@@ -132,33 +132,35 @@ ICON_WAKA=$'\xef\x84\x9c'
 ICON_SKILLS=$'\xef\x82\xae'
 ICON_MCP=$'\xef\x87\xa6'
 
-# Gruvbox Dark Hard accents — match alacritty/wezterm/.tmux.conf palette.
+# Catppuccin Mocha accents — match wezterm/.tmux.conf/sonicterm palette.
 # Use 24-bit ANSI so we don't depend on the terminal's 256-color cube.
 if [ -z "${CLAUDE_STATUSLINE_NO_COLOR:-}" ]; then
   C_RESET=$'\033[0m'
   C_DIM=$'\033[2m'                                # dim for separator + label
-  C_RED=$'\033[38;2;251;73;52m'                   # #fb4934
-  C_GREEN=$'\033[38;2;184;187;38m'                # #b8bb26
-  C_YELLOW=$'\033[38;2;250;189;47m'               # #fabd2f
-  C_BLUE=$'\033[38;2;131;165;152m'                # #83a598
+  C_RED=$'\033[38;2;243;139;168m'                 # #f38ba8 — mocha red
+  C_GREEN=$'\033[38;2;166;227;161m'               # #a6e3a1 — mocha green
+  C_YELLOW=$'\033[38;2;249;226;175m'              # #f9e2af — mocha yellow
+  C_BLUE=$'\033[38;2;137;180;250m'                # #89b4fa — mocha blue
   # Background variants for highlighted values (e.g., vim mode badge).
-  # Palette + role assignment match vim-airline's gruvbox theme:
+  # Role assignment follows vim-airline's convention:
   #   NORMAL  → yellow bg
   #   INSERT  → blue bg
-  #   VISUAL  → orange bg
+  #   VISUAL  → orange bg (mocha peach)
   #   REPLACE → red bg
-  # Airline pairs each with a dark foreground (#1d2021) for contrast — the
-  # vim segment uses $C_BG_FG below instead of $C_FG.
-  CB_RED=$'\033[48;2;204;36;29m'                   # #cc241d — gruvbox red
-  CB_BLUE=$'\033[48;2;69;133;136m'                 # #458588 — gruvbox blue
-  CB_YELLOW=$'\033[48;2;215;153;33m'               # #d79921 — gruvbox yellow
-  CB_ORANGE=$'\033[48;2;214;93;14m'                # #d65d0e — gruvbox orange
-  CB_GREEN=$'\033[48;2;152;151;26m'                # #98971a — gruvbox green (kept for back-compat)
-  C_BG_FG=$'\033[38;2;29;32;33m'                   # #1d2021 — gruvbox dark0_hard, for text on bright bg
-  C_PURPLE=$'\033[38;2;211;134;155m'              # #d3869b
-  C_AQUA=$'\033[38;2;142;192;124m'                # #8ec07c
-  C_ORANGE=$'\033[38;2;254;128;25m'               # #fe8019
-  C_FG=$'\033[38;2;235;219;178m'                  # #ebdbb2
+  # Each pairs with a dark foreground for contrast — the vim segment uses
+  # $C_BG_FG below instead of $C_FG. Catppuccin's accents are pastels, so
+  # they are bright enough to carry dark text directly (unlike Gruvbox,
+  # which needed its dimmer "neutral" variants for backgrounds).
+  CB_RED=$'\033[48;2;243;139;168m'                 # #f38ba8 — mocha red
+  CB_BLUE=$'\033[48;2;137;180;250m'                # #89b4fa — mocha blue
+  CB_YELLOW=$'\033[48;2;249;226;175m'              # #f9e2af — mocha yellow
+  CB_ORANGE=$'\033[48;2;250;179;135m'              # #fab387 — mocha peach
+  CB_GREEN=$'\033[48;2;166;227;161m'               # #a6e3a1 — mocha green (kept for back-compat)
+  C_BG_FG=$'\033[38;2;30;30;46m'                   # #1e1e2e — mocha base, for text on bright bg
+  C_PURPLE=$'\033[38;2;203;166;247m'              # #cba6f7 — mocha mauve
+  C_AQUA=$'\033[38;2;148;226;213m'                # #94e2d5 — mocha teal
+  C_ORANGE=$'\033[38;2;250;179;135m'              # #fab387 — mocha peach
+  C_FG=$'\033[38;2;205;214;244m'                  # #cdd6f4 — mocha text
 else
   C_RESET=""; C_DIM=""; C_RED=""; C_GREEN=""; C_YELLOW=""; C_BLUE=""
   C_PURPLE=""; C_AQUA=""; C_ORANGE=""; C_FG=""
@@ -496,7 +498,7 @@ seg_ctx() {
 
 seg_vim() {
   [ -n "$vim_mode" ] || return 0
-  # vim-airline gruvbox palette:
+  # vim-airline role assignment (colors from Catppuccin Mocha):
   #   NORMAL  → yellow / dark fg
   #   INSERT  → blue   / dark fg
   #   VISUAL  → orange / dark fg

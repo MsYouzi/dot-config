@@ -1,5 +1,5 @@
 " Apollo colorscheme for Vim
-" Gruvbox dark hard base + Material warm beige + darker canvas (#141617).
+" Catppuccin Mocha base + deeper crust canvas (#11111b).
 " Install: cp apollo.vim ~/.vim/colors/  (or symlink)
 " Use:     :colorscheme apollo
 
@@ -9,25 +9,25 @@ let g:colors_name = 'apollo'
 set background=dark
 
 " Palette
-let s:bg     = '#141617'
-let s:bg1    = '#1d2021'
-let s:bg2    = '#3c3836'
-let s:fg     = '#ebdbb2'
-let s:fg_dim = '#928374'
-let s:fg2    = '#d5c4a1'
-let s:red    = '#cc241d'
-let s:green  = '#98971a'
-let s:yellow = '#d79921'
-let s:blue   = '#458588'
-let s:purple = '#b16286'
-let s:aqua   = '#689d6a'
-let s:beige  = '#d4be98'
-let s:bred   = '#fb4934'
-let s:bgreen = '#b8bb26'
-let s:byellow= '#fabd2f'
-let s:bblue  = '#83a598'
-let s:bpurple= '#d3869b'
-let s:baqua  = '#8ec07c'
+let s:bg     = '#11111b'
+let s:bg1    = '#181825'
+let s:bg2    = '#313244'
+let s:fg     = '#cdd6f4'
+let s:fg_dim = '#6c7086'
+let s:fg2    = '#bac2de'
+let s:red    = '#f38ba8'
+let s:green  = '#a6e3a1'
+let s:yellow = '#f9e2af'
+let s:blue   = '#89b4fa'
+let s:purple = '#f5c2e7'
+let s:aqua   = '#94e2d5'
+let s:beige  = '#bac2de'
+let s:bred   = '#f38ba8'
+let s:bgreen = '#a6e3a1'
+let s:byellow= '#f9e2af'
+let s:bblue  = '#89b4fa'
+let s:bpurple= '#cba6f7'
+let s:baqua  = '#94e2d5'
 
 function! s:hi(group, fg, bg, attr) abort
   let l:cmd = 'hi ' . a:group

@@ -3,7 +3,7 @@
 #
 # Sibling of ~/.claude/statusline.sh — same vibe (one Nerd-Font-iconed
 # segment per data point, separated by Unicode bars), each segment gets
-# its own Gruvbox accent color so the value pops out from the colored
+# its own Catppuccin accent color so the value pops out from the colored
 # icon + label pair to its left. This is a "full mirror" of the Claude
 # version: every segment Claude shows is reproduced here when the data
 # is exposed by Copilot's statusLine JSON, plus a few Copilot-only
@@ -145,22 +145,22 @@ ICON_SUBAGENT_ROOT=$'\xef\x84\xa0'
 ICON_SUBAGENT=$'\xef\x83\x90'
 ICON_MODE=$'\xef\x82\x85'
 
-# Gruvbox Dark Hard accents — match alacritty/wezterm/.tmux.conf palette.
+# Catppuccin Mocha accents — match wezterm/.tmux.conf/sonicterm palette.
 # Use 24-bit ANSI so we don't depend on the terminal's 256-color cube.
 # Honor both COPILOT_STATUSLINE_NO_COLOR (preferred) and the legacy
 # COPILOT_STATUSLINE_NO_DIM as an alias for backwards-compat.
 if [ -z "${COPILOT_STATUSLINE_NO_COLOR:-}" ] && [ -z "${COPILOT_STATUSLINE_NO_DIM:-}" ]; then
   C_RESET=$'\033[0m'
   C_DIM=$'\033[2m'                                # dim for separator + labels
-  C_RED=$'\033[38;2;251;73;52m'                   # #fb4934
-  C_GREEN=$'\033[38;2;184;187;38m'                # #b8bb26
-  C_YELLOW=$'\033[38;2;250;189;47m'               # #fabd2f
-  C_BLUE=$'\033[38;2;131;165;152m'                # #83a598
-  C_PURPLE=$'\033[38;2;211;134;155m'              # #d3869b
-  C_AQUA=$'\033[38;2;142;192;124m'                # #8ec07c
-  C_ORANGE=$'\033[38;2;254;128;25m'               # #fe8019
-  C_FG=$'\033[38;2;235;219;178m'                  # #ebdbb2
-  C_FG_DIM=$'\033[38;2;168;153;132m'              # #a89984 — gruvbox fg3
+  C_RED=$'\033[38;2;243;139;168m'                 # #f38ba8 — mocha red
+  C_GREEN=$'\033[38;2;166;227;161m'               # #a6e3a1 — mocha green
+  C_YELLOW=$'\033[38;2;249;226;175m'              # #f9e2af — mocha yellow
+  C_BLUE=$'\033[38;2;137;180;250m'                # #89b4fa — mocha blue
+  C_PURPLE=$'\033[38;2;203;166;247m'              # #cba6f7 — mocha mauve
+  C_AQUA=$'\033[38;2;148;226;213m'                # #94e2d5 — mocha teal
+  C_ORANGE=$'\033[38;2;250;179;135m'              # #fab387 — mocha peach
+  C_FG=$'\033[38;2;205;214;244m'                  # #cdd6f4 — mocha text
+  C_FG_DIM=$'\033[38;2;166;173;200m'              # #a6adc8 — mocha subtext0
 else
   C_RESET=""; C_DIM=""; C_RED=""; C_GREEN=""; C_YELLOW=""; C_BLUE=""
   C_PURPLE=""; C_AQUA=""; C_ORANGE=""; C_FG=""

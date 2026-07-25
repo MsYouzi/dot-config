@@ -42,7 +42,7 @@ links.
 - **WezTerm config** (`.wezterm.lua`) is Lua. It uses `wezterm.config_builder()`
   and adapts font weight and FreeType hinting at runtime based on display DPI
   (Retina vs non-Retina) via `window-config-reloaded` / `window-resized` events.
-- Color scheme is **GruvboxDarkHard** throughout. Tab bar colors are defined as
+- Color scheme is **Catppuccin Mocha** throughout. Tab bar colors are defined as
   local constants at the top of the colors section — reuse those when adding
   UI elements.
 - Tab rendering uses a custom `format-tab-title` handler with Nerd Font icons
