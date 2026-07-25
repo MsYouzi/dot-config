@@ -21,6 +21,7 @@ that creates symlinks into the home directory.
 dot-configs/
 ├── install.sh                   # idempotent linker (macOS only)
 ├── .tmux.conf                   # -> ~/.tmux.conf  (tab/split/session manager)
+├── .tmux.fork.conf              # -> ~/.tmux.fork.conf  (fork's Catppuccin override)
 ├── oh-my-zsh-custom/            # contents -> ~/.oh-my-zsh/custom/
 │   ├── custom.zsh               # aliases, proxy helpers, brew completions, env
 │   ├── copilot.zsh              # copilot update wrapper -> cleanup hook
@@ -38,7 +39,8 @@ dot-configs/
 │       ├── update-settings/     # edit any config here correctly, then apply it
 │       └── sync-upstream/       # pull D0n9X1n upstream, keep this fork's settings
 ├── wezterm/                     # terminal config -> ~/.wezterm.lua
-│   └── wezterm.lua              # WezTerm config
+│   ├── wezterm.lua              # WezTerm config
+│   └── palette-fork.lua         # fork's Catppuccin override (read at config-eval)
 ├── .sonicterm/                  # tracked TOML config -> ~/.sonicterm/
 │   ├── sonicterm.toml           # SonicTerm config
 │   ├── keymaps/                 # WezTerm-compatible keymaps
@@ -178,21 +180,46 @@ This repo has two remotes: `origin` (MsYouzi/dot-config, where work lands) and
 `source` (D0n9X1n/dot-config, upstream, read-only). Upstream ships Gruvbox; this
 fork runs Catppuccin Mocha, so pulling is a merge, not a fast-forward.
 
-The **`sync-upstream` skill** automates it. In Claude Code or Copilot CLI:
+**Colors are structurally protected.** For every theme this fork overrides,
+upstream's block is kept byte-identical to `source/main` and the fork's palette
+lives in a separate file applied afterwards. Upstream can retune its Gruvbox
+freely: the merge stays clean and nothing about what renders changes.
+
+| Consumer | Upstream owns | Fork owns — **edit colors here** | Mechanism |
+| --- | --- | --- | --- |
+| WezTerm | theme block + `DARK_BG`/`FG_*` | `wezterm/palette-fork.lua` | `dofile`, reassigns |
+| tmux | its theme block | `.tmux.fork.conf` | `source-file -q`, last wins |
+| Claude + Copilot statusline | inline `C_*`/`CB_*` | `themes/apollo/statusline-palette.sh` | sourced after block |
+| SonicTerm | `themes/wezterm.toml` | `themes/catppuccin-mocha.toml` | selected by name |
+
+Each falls back to upstream's Gruvbox if its palette file goes missing —
+degraded, never broken.
+
+Still diverged in place, and **expected to conflict**: `ReadMe.md`,
+`QUICKREF.md`, `CLAUDE.md`, `copilot-instructions.md` (prose has no structural
+fix — resolve by hand) and the rest of `themes/apollo/*` (fork-owned; keep
+yours).
+
+The **`sync-upstream` skill** automates the pull. In Claude Code or Copilot CLI:
 
 > pull the latest from upstream and keep my settings
 
 It fetches `source`, merges (never rebases — rebase inverts ours/theirs and
-would silently restore upstream's Gruvbox), resolves the known-diverged files
-with a per-file playbook, then verifies four invariants proving the SonicTerm
-theme survived. By hand:
+would silently restore upstream's Gruvbox), resolves conflicts with a per-file
+playbook, then verifies seven invariants proving the fork's colors survived.
+By hand:
 
 ```bash
 git fetch source
 git log --oneline main..source/main    # what is incoming
 git merge source/main                  # NOT --rebase
+
+# verify the fork's palettes still win
 git diff source/main -- .sonicterm/themes/wezterm.toml   # must print nothing
 grep '^theme' .sonicterm/sonicterm.toml                  # theme = "catppuccin-mocha"
+tmux -L chk -f .tmux.conf new-session -d 2>/dev/null; \
+  tmux -L chk show -gv status-style; tmux -L chk kill-server   # bg=#1e1e2e
+wezterm --config-file wezterm/wezterm.lua show-keys >/dev/null && echo "wezterm ok"
 scripts/check.sh all
 ```
 

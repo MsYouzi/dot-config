@@ -67,7 +67,10 @@ creates symlinks into `$HOME` (and `~/.oh-my-zsh/custom/`).
   this repo. Mirrors `.github/copilot-instructions.md`.
 - `<repo>/.<name>` — root dotfiles linked to `$HOME/.<name>`. Currently:
   - `.tmux.conf` — primary tab/split/session manager (Catppuccin Mocha
-    palette, prefix `C-q` (chosen over default C-b for ergonomics — far
+    palette **applied from `.tmux.fork.conf`**, which the config sources last;
+    upstream's own theme block is left byte-identical to `source/main` so
+    upstream pulls never conflict — edit tmux colors in `.tmux.fork.conf`,
+    prefix `C-q` (chosen over default C-b for ergonomics — far
     from C-c/d/z, doesn't clash with readline, and modern macOS disables
     the legacy C-q XON flow control), mouse on, top status bar, vim-style
     splits (`prefix + |` / `prefix + -`), 1-indexed windows, OSC 52
@@ -93,6 +96,15 @@ creates symlinks into `$HOME` (and `~/.oh-my-zsh/custom/`).
     `tmux -f .tmux.conf -L _v new-session -d -s _v ; tmux -L _v kill-server`.
 - `<repo>/wezterm/wezterm.lua` — terminal config, auto-linked by `install.sh`
   to `~/.wezterm.lua`. The `wezterm` cask is auto-installed too.
+  **Colors come from `wezterm/palette-fork.lua`**, dofile'd at config-eval time;
+  upstream's theme block and `DARK_BG`/`FG_*` locals are left byte-identical to
+  `source/main` so upstream pulls never conflict. Edit colors in
+  `palette-fork.lua`. Resolution note: WezTerm's Lua sandbox has **no `debug`
+  table**, and `wezterm.config_file` reports the *symlink* (`~/.wezterm.lua`),
+  not its target — so the loader tries the config dir first, then `readlink`s
+  to find the repo copy. Everything is `pcall`'d: a missing palette leaves
+  upstream's Gruvbox rather than erroring (a WezTerm config error means no
+  terminal at all).
   Config uses `color_scheme = "Catppuccin Mocha"` (WezTerm builtin) with
   `config.colors.background = "#11111b"` (Catppuccin `crust`, one step
   below the scheme's own `#1e1e2e` base), `inactive_pane_hsb = {1,1,1}`
@@ -304,8 +316,10 @@ creates symlinks into `$HOME` (and `~/.oh-my-zsh/custom/`).
    insecure zsh completion directory permissions; set `SKIP_OH_MY_ZSH=1` to skip
    installation.
 4. Symlinks every non-ignored top-level `.<name>` file in the repo to
-   `$HOME/.<name>` (currently `.tmux.conf` plus `.gitignore`; ignored generated
-   files such as `.copilot-cli.ts` are skipped).
+   `$HOME/.<name>` (currently `.tmux.conf`, `.tmux.fork.conf`, plus
+   `.gitignore`; ignored generated files such as `.copilot-cli.ts` are
+   skipped). `.tmux.fork.conf` needs no special case — the loop picks up any
+   tracked top-level dotfile.
 5. Symlinks every file in `oh-my-zsh-custom/` to `~/.oh-my-zsh/custom/`.
 6. Symlinks every file in `copilot/` to `~/.copilot/`, creating the
    destination directory if missing, then runs `cleanup-legacy.sh` to prune

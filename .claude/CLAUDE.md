@@ -87,14 +87,25 @@ Personal dotfiles, synced across machines via git + symlinks. macOS-only;
   match the theme name — the two-file split is deliberate and is what keeps
   upstream pulls conflict-free. Verify with
   `git diff source/main -- .sonicterm/themes/wezterm.toml` (must be empty).
-  **The statuslines are protected the same way:** their `C_*`/`CB_*` blocks are
-  byte-identical to upstream and the fork's colors live in
-  `themes/apollo/statusline-palette.sh`, sourced after the block. Verify with
-  `git diff source/main -- claude/statusline.sh` — the only hunk should be the
-  palette-override block after the `fi`.
-  Note `.tmux.conf`, `wezterm/wezterm.lua`, and the rest of `themes/apollo/*`
-  are still Catppuccin-diverged in place and will conflict on upstream pulls;
-  that was scoped out deliberately.
+  **Every theme this fork overrides is protected the same way:** upstream's
+  block stays byte-identical and the fork's palette lives in a fork-only file
+  applied afterwards.
+
+  | Consumer | Upstream owns | Fork owns (edit here) |
+  | --- | --- | --- |
+  | statuslines | inline `C_*`/`CB_*` block | `themes/apollo/statusline-palette.sh` |
+  | tmux | its theme block | `.tmux.fork.conf` (`source-file -q`, last wins) |
+  | WezTerm | theme block + `DARK_BG`/`FG_*` locals | `wezterm/palette-fork.lua` |
+  | SonicTerm | `themes/wezterm.toml` | `themes/catppuccin-mocha.toml` |
+
+  Never move a palette back into upstream's block — that is the collision this
+  layout exists to remove. Verify the color files are additive-only with
+  `git diff source/main --stat -- .tmux.conf wezterm/wezterm.lua claude/statusline.sh copilot/statusline.sh`
+  (insertions only, zero deletions).
+  Note `themes/apollo/*` (the rest) and the docs — `ReadMe.md`, `QUICKREF.md`,
+  `CLAUDE.md`, `copilot-instructions.md` — are still diverged in place. The docs
+  are upstream's two most-edited files and will conflict on most pulls; that is
+  accepted and resolved by hand, since prose has no structural fix.
 - **Skills live once, in `claude/skills/`, and serve both runtimes.**
   `install.sh` links each `claude/skills/<name>/` into **both**
   `~/.claude/skills/<name>/` and `~/.copilot/skills/<name>/`. Copilot CLI reads

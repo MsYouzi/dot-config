@@ -48,6 +48,20 @@ for f in claude copilot; do
   printf '{}' | bash "$f/statusline.sh" | grep -qE '38;2;(205;214;244|249;226;175|137;180;250)' \
     && echo "mocha ok" || echo "FAIL — check themes/apollo/statusline-palette.sh is sourced"
 done
+
+# 6. tmux applies the fork's palette. Uses a throwaway socket (-L) so it does
+#    not disturb a running session.
+tmux -L syncheck -f .tmux.conf new-session -d -s c 2>/dev/null
+[ "$(tmux -L syncheck show -gv status-style)" = "bg=#1e1e2e,fg=#cdd6f4" ] \
+  && echo "tmux: mocha ok" || echo "tmux: FAIL — check .tmux.fork.conf is sourced last"
+tmux -L syncheck kill-server 2>/dev/null
+
+# 7. WezTerm resolves the fork palette. Loading the config is the only honest
+#    check — the override runs at config-eval time.
+wezterm --config-file wezterm/wezterm.lua show-keys >/dev/null 2>&1 \
+  && echo "wezterm: config loads" || echo "wezterm: FAIL — config error"
+grep -q 'FORK.color_scheme' wezterm/wezterm.lua \
+  && echo "wezterm: override hook present" || echo "wezterm: FAIL — hook lost in merge"
 ```
 
 **Why `.sonicterm/` is safe and the rest is not.** The palette used to live
@@ -111,18 +125,27 @@ colors.** Upstream owns behavior; the fork owns the palette.
 | `.sonicterm/sonicterm.toml` | `theme =` line only | keep the fork's `theme = "catppuccin-mocha"`, take upstream's other hunks |
 | `claude/statusline.sh` | nothing in the color block — upstream's | take upstream wholesale; keep the fork's palette-override hook after the `fi` |
 | `copilot/statusline.sh` | same | same |
+| `.tmux.conf` | nothing in the theme block — upstream's | take upstream wholesale; keep the `source-file -q ~/.tmux.fork.conf` block at the end |
+| `wezterm/wezterm.lua` | nothing in the theme block — upstream's | take upstream wholesale; keep the two `FORK` override blocks |
 | `themes/apollo/statusline-palette.sh` | fork-only file | upstream cannot touch it; keep as-is |
-| `.tmux.conf` | Catppuccin status colors | take upstream's bindings/options, re-apply fork colors |
-| `wezterm/wezterm.lua` | `color_scheme`, `background`, tab-bar colors | take upstream's logic, re-apply fork colors |
+| `.tmux.fork.conf` | fork-only file | upstream cannot touch it; keep as-is |
+| `wezterm/palette-fork.lua` | fork-only file | upstream cannot touch it; keep as-is |
 | `themes/apollo/*` (rest) | whole Catppuccin palette | fork-owned; keep the fork's version |
+| `ReadMe.md`, `QUICKREF.md`, `CLAUDE.md`, `copilot-instructions.md` | heavy prose rewrites | **expect conflicts on most pulls.** No structural fix exists for prose. Keep the fork's sections describing fork-only machinery (palette files, sync-upstream, the two-remote setup); take upstream's new content everywhere else. |
 
-**The statuslines no longer need hand-repair.** Their `C_*`/`CB_*` blocks are
-kept byte-identical to upstream, and both scripts source
-`themes/apollo/statusline-palette.sh` immediately afterwards to reassign those
-variables. Upstream can retune its Gruvbox freely: the merge is clean, the new
-defaults land in the file, and the fork's Mocha still wins at runtime. So take
-upstream's version of any conflicting hunk *inside* the color block — do not
-hand-port colors back in.
+**None of the color files need hand-repair any more.** Every theme this fork
+overrides now keeps upstream's block byte-identical and re-applies the fork's
+palette from a fork-only file afterwards:
+
+| Consumer | Upstream's block | Fork's override |
+| --- | --- | --- |
+| statuslines | inline `C_*`/`CB_*` | `themes/apollo/statusline-palette.sh` (sourced) |
+| tmux | its theme block | `.tmux.fork.conf` (`source-file -q`, last wins) |
+| WezTerm | its theme block + locals | `wezterm/palette-fork.lua` (`dofile`, reassigns) |
+| SonicTerm | `themes/wezterm.toml` | `themes/catppuccin-mocha.toml` (selected by name) |
+
+So for any conflict *inside* one of those upstream blocks: take upstream's
+version. The override wins at runtime regardless. Only hand-resolve the docs.
 
 Two repo rules that bite during this phase:
 
