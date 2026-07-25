@@ -1000,6 +1000,24 @@ if [ -d "$claude_src" ]; then
       done < <(find "$skill_dir" -maxdepth 1 -mindepth 1 -type f -print0)
     done < <(find "$claude_skills_src" -maxdepth 1 -mindepth 1 -type d -print0)
     echo "Linked Claude Code skills to ${claude_dest}/skills"
+
+    # Same skills, second consumer: Copilot CLI reads personal skills from
+    # ~/.copilot/skills/<name>/SKILL.md — the same layout Claude Code uses.
+    # claude/skills/ is the single source of truth (Claude Code primary); this
+    # pass links the same tracked files into Copilot's directory instead of
+    # keeping a second copy in copilot/. Both runtimes therefore see one file,
+    # and editing claude/skills/<name>/SKILL.md updates both at once.
+    copilot_skills_dest="${HOME}/.copilot/skills"
+    mkdir -p "$copilot_skills_dest"
+    while IFS= read -r -d '' skill_dir; do
+      skill_name="$(basename "$skill_dir")"
+      mkdir -p "${copilot_skills_dest}/${skill_name}"
+      while IFS= read -r -d '' entry; do
+        base="$(basename "$entry")"
+        link_file "$entry" "${copilot_skills_dest}/${skill_name}/${base}"
+      done < <(find "$skill_dir" -maxdepth 1 -mindepth 1 -type f -print0)
+    done < <(find "$claude_skills_src" -maxdepth 1 -mindepth 1 -type d -print0)
+    echo "Linked the same skills to ${copilot_skills_dest} (Copilot CLI)"
   fi
 
   # Claude Code v2.1.217 added a native concurrent-subagent limit. Remove only

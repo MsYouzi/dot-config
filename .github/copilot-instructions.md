@@ -18,6 +18,14 @@ directory, and `install.sh` links only its TOML config/keymap/theme files into
 secret-free file is linked into `~/.copilot-relay/`, while relay tokens and logs
 remain local and must not be committed.
 
+Skills are tracked once under `claude/skills/<name>/SKILL.md` and linked by
+`install.sh` into both `~/.claude/skills/` and `~/.copilot/skills/`, so the same
+skill loads in Claude Code and Copilot CLI. Claude Code is primary — author
+skills under `claude/skills/` and never add a duplicate under `copilot/`. To
+pull upstream changes from the `source` remote, follow the `sync-upstream`
+skill; it encodes the merge-not-rebase rule and the checks that prove this
+fork's SonicTerm theme survived the merge.
+
 This repo is a fork: `origin` is MsYouzi/dot-config, `source` is upstream
 D0n9X1n/dot-config. `.sonicterm/themes/wezterm.toml` is upstream's Gruvbox file
 and must stay byte-identical to `source/main` so upstream pulls never conflict on

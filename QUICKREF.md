@@ -312,7 +312,13 @@ creates symlinks into `$HOME` (and `~/.oh-my-zsh/custom/`).
    `~/.claude/hooks/subagent-counter.sh` symlink while preserving user hooks.
    Skills are one directory deeper (`claude/skills/<name>/SKILL.md`) and get a
    separate pass linking each skill's files into `~/.claude/skills/<name>/`
-   — global, so they load in every project, not just this repo.
+   — global, so they load in every project, not just this repo. The **same**
+   tracked files are then linked a second time into
+   `~/.copilot/skills/<name>/`, which is where Copilot CLI reads personal
+   skills from (`copilot --help`: "Personal ~/.copilot/skills/ or
+   ~/.agents/skills/"). `claude/` is the single source of truth — Claude Code
+   primary — so one edit serves both runtimes and there is no copy in
+   `copilot/` to keep in sync.
 8. Symlinks `wezterm/wezterm.lua` to `~/.wezterm.lua`.
 9. Symlinks tracked `.sonicterm` TOML files into `~/.sonicterm/` while leaving
    logs/backups local.
@@ -344,7 +350,9 @@ creates symlinks into `$HOME` (and `~/.oh-my-zsh/custom/`).
   The destination directory is created automatically.
 - New Claude Code skill: add `claude/skills/<name>/SKILL.md` (frontmatter needs
   `name` + a `description` with explicit TRIGGER/SKIP wording), run
-  `install.sh`. Supporting files in the same directory are linked too.
+  `install.sh`. Supporting files in the same directory are linked too. The same
+  skill is linked into `~/.copilot/skills/<name>/` as well, so it works in
+  Copilot CLI without a second copy — never add one under `copilot/`.
 - New SonicTerm config: add TOML under `.sonicterm/`, `.sonicterm/keymaps/`,
   or `.sonicterm/themes/`, run `install.sh`. Do not commit `~/.sonicterm/logs/`
   or runtime backup files.

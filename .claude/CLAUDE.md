@@ -86,6 +86,20 @@ Personal dotfiles, synced across machines via git + symlinks. macOS-only;
   Note the rest of the repo (`.tmux.conf`, `wezterm/wezterm.lua`, both
   statuslines, `themes/apollo/*`) is still Catppuccin-diverged in place and
   will conflict on upstream pulls; that was scoped out deliberately.
+- **Skills live once, in `claude/skills/`, and serve both runtimes.**
+  `install.sh` links each `claude/skills/<name>/` into **both**
+  `~/.claude/skills/<name>/` and `~/.copilot/skills/<name>/`. Copilot CLI reads
+  personal skills from `~/.copilot/skills/` (its own `--help` says so:
+  "Personal ~/.copilot/skills/ or ~/.agents/skills/") using the same
+  `SKILL.md` + frontmatter format Claude Code uses. Claude Code is primary:
+  author and edit skills under `claude/skills/` only. Do **not** create a
+  parallel copy under `copilot/` — the whole point is one file, two symlinks,
+  no drift.
+- **`sync-upstream` is the skill for pulling from `source`.** When the user asks
+  to pull/merge/sync upstream (D0n9X1n), follow
+  `claude/skills/sync-upstream/SKILL.md` rather than improvising: it encodes the
+  merge-not-rebase rule, the per-file conflict playbook, and the four
+  `.sonicterm/` invariants that prove the fork's theme survived.
 - **`.copilot-relay/config.yaml` is tracked config, not auth state.**
   `install.sh` links only that file into `~/.copilot-relay/`; never commit
   `github_token`, `copilot_token.json`, or relay logs.

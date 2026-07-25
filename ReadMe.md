@@ -34,8 +34,9 @@ dot-configs/
 ├── claude/                      # contents -> ~/.claude/
 │   ├── settings.json            # Claude Code settings
 │   ├── statusline.sh            # statusline
-│   └── skills/                  # skills -> ~/.claude/skills/ (load in every project)
-│       └── update-settings/     # edit any config here correctly, then apply it
+│   └── skills/                  # skills -> ~/.claude/skills/ AND ~/.copilot/skills/
+│       ├── update-settings/     # edit any config here correctly, then apply it
+│       └── sync-upstream/       # pull D0n9X1n upstream, keep this fork's settings
 ├── wezterm/                     # terminal config -> ~/.wezterm.lua
 │   └── wezterm.lua              # WezTerm config
 ├── .sonicterm/                  # tracked TOML config -> ~/.sonicterm/
@@ -105,7 +106,11 @@ probes do not appear as errors.
    to this repository; user-owned hooks are preserved. Skills live one directory
    deeper (`claude/skills/<name>/SKILL.md`), so they get their own pass that
    links each skill's files into `~/.claude/skills/<name>/` — global, meaning
-   they load in every project on the machine, not just this repo.
+   they load in every project on the machine, not just this repo. The same files
+   are linked again into `~/.copilot/skills/<name>/`, the directory Copilot CLI
+   reads personal skills from, so a single tracked skill works in both runtimes.
+   `claude/` is the source of truth; there is deliberately no copy under
+   `copilot/`.
 8. Symlinks `wezterm/wezterm.lua` into `~/.wezterm.lua`.
 9. Symlinks tracked SonicTerm TOML files into `~/.sonicterm/`:
    `sonicterm.toml`, `keymaps/*.toml`, and `themes/*.toml`. Logs and runtime
@@ -153,8 +158,8 @@ all machines because every config file is a symlink into this repo.
 ## Usage
 
 ```bash
-git clone git@github.com:D0n9X1n/dot-config.git ~/Public/dot-configs
-bash ~/Public/dot-configs/install.sh
+git clone git@github.com:MsYouzi/dot-config.git ~/Public/dot-config
+bash ~/Public/dot-config/install.sh
 ```
 
 macOS only.
@@ -162,8 +167,32 @@ macOS only.
 Subsequent updates on a machine:
 
 ```bash
-cd ~/Public/dot-configs && git pull
+cd ~/Public/dot-config && git pull
 # Re-run install.sh only if new files were added; existing symlinks need no action.
+```
+
+### Pulling from upstream (this is a fork)
+
+This repo has two remotes: `origin` (MsYouzi/dot-config, where work lands) and
+`source` (D0n9X1n/dot-config, upstream, read-only). Upstream ships Gruvbox; this
+fork runs Catppuccin Mocha, so pulling is a merge, not a fast-forward.
+
+The **`sync-upstream` skill** automates it. In Claude Code or Copilot CLI:
+
+> pull the latest from upstream and keep my settings
+
+It fetches `source`, merges (never rebases — rebase inverts ours/theirs and
+would silently restore upstream's Gruvbox), resolves the known-diverged files
+with a per-file playbook, then verifies four invariants proving the SonicTerm
+theme survived. By hand:
+
+```bash
+git fetch source
+git log --oneline main..source/main    # what is incoming
+git merge source/main                  # NOT --rebase
+git diff source/main -- .sonicterm/themes/wezterm.toml   # must print nothing
+grep '^theme' .sonicterm/sonicterm.toml                  # theme = "catppuccin-mocha"
+scripts/check.sh all
 ```
 
 ## Checks
