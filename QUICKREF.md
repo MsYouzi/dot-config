@@ -103,10 +103,18 @@ creates symlinks into `$HOME` (and `~/.oh-my-zsh/custom/`).
   `install.sh` into `~/.sonicterm/`. This is **not** a whole-directory symlink:
   only `sonicterm.toml`, `keymaps/*.toml`, and `themes/*.toml` are linked so
   runtime `logs/` and backup files remain machine-local.
-  Current config pins theme `wezterm`, keymap `sonicterm-macos`, Rec Mono
-  St.Helens 14 / line-height 1.2, `TERM_PROGRAM=WezTerm`, 1000-line scrollback,
-  no cursor blink, software render mode auto, Catppuccin/WezTerm-aligned theme
-  colors, and WezTerm-compatible macOS/Linux/Windows keymaps.
+  Current config pins theme `catppuccin-mocha`, keymap `sonicterm-macos`, Rec
+  Mono St.Helens 14 / line-height 1.2, `TERM_PROGRAM=WezTerm`, 1000-line
+  scrollback, no cursor blink, software render mode auto,
+  Catppuccin/WezTerm-aligned theme colors, and WezTerm-compatible
+  macOS/Linux/Windows keymaps.
+  **Fork-divergence rule (this fork tracks upstream `source` =
+  D0n9X1n/dot-config):** `themes/wezterm.toml` is upstream's Gruvbox file and is
+  kept byte-identical to `source/main`, so `git pull source main` never
+  conflicts on it. This fork's palette lives in `themes/catppuccin-mocha.toml`,
+  a file upstream does not have. The single diverged line in `.sonicterm/` is
+  `theme =` in `sonicterm.toml`. Do **not** move the palette back into
+  `wezterm.toml` — that is the collision this layout exists to remove.
 - `<repo>/.copilot-relay/config.yaml` — secret-free relay config linked by
   `install.sh` to `~/.copilot-relay/config.yaml`. Pins `claudeSetup: false`,
   local server `127.0.0.1:4142`, `thinkEffort: max`, `gptModel: gpt-5.6-sol`,

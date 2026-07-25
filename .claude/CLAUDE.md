@@ -71,6 +71,21 @@ Personal dotfiles, synced across machines via git + symlinks. macOS-only;
   `.sonicterm/*.toml`, `.sonicterm/keymaps/*.toml`, and
   `.sonicterm/themes/*.toml` into `~/.sonicterm/`; do not commit SonicTerm
   `logs/` or runtime backup files.
+- **This repo is a fork; keep upstream-owned files pristine.** `origin` is
+  MsYouzi/dot-config (this copy), `source` is upstream D0n9X1n/dot-config.
+  `.sonicterm/themes/wezterm.toml` is **upstream's** file (Gruvbox dark hard) and
+  must stay byte-identical to `source/main` so `git pull source main` never
+  conflicts on it. This fork's palette lives in its own file,
+  `.sonicterm/themes/catppuccin-mocha.toml`, which upstream does not have;
+  `sonicterm.toml` selects it with `theme = "catppuccin-mocha"` (SonicTerm
+  resolves names against `~/.sonicterm/themes/<name>.toml`). Do **not**
+  consolidate the palette back into `wezterm.toml` and do **not** "fix" it to
+  match the theme name — the two-file split is deliberate and is what keeps
+  upstream pulls conflict-free. Verify with
+  `git diff source/main -- .sonicterm/themes/wezterm.toml` (must be empty).
+  Note the rest of the repo (`.tmux.conf`, `wezterm/wezterm.lua`, both
+  statuslines, `themes/apollo/*`) is still Catppuccin-diverged in place and
+  will conflict on upstream pulls; that was scoped out deliberately.
 - **`.copilot-relay/config.yaml` is tracked config, not auth state.**
   `install.sh` links only that file into `~/.copilot-relay/`; never commit
   `github_token`, `copilot_token.json`, or relay logs.

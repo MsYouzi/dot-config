@@ -11,7 +11,11 @@
 #   - Or set keymap = "/absolute/path/to/keymap.toml"
 
 # Active color theme. Bundled themes live in assets/themes/.
-theme = "wezterm"
+# Fork-local: this line is the ONLY intentional divergence from upstream
+# (D0n9X1n/dot-config) inside .sonicterm/. It selects themes/catppuccin-mocha.toml
+# instead of upstream's Gruvbox themes/wezterm.toml, which is left untouched so
+# upstream pulls stay conflict-free. See themes/catppuccin-mocha.toml for why.
+theme = "catppuccin-mocha"
 
 # Active keymap. The default is platform-specific:
 #   macOS   -> sonicterm-macos

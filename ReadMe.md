@@ -520,10 +520,25 @@ SonicTerm config is kept in-repo and auto-linked by `install.sh` into
 the tracked TOML files (`sonicterm.toml`, `keymaps/*.toml`, `themes/*.toml`) so
 SonicTerm's `logs/` directory and runtime backup files remain local.
 
-The tracked config uses the `wezterm` theme, `sonicterm-macos` keymap, Rec Mono
-St.Helens 14 with line-height 1.2, `TERM_PROGRAM=WezTerm`, 1000-line scrollback,
-no cursor blink, opaque Catppuccin Mocha chrome, software render mode auto, and
-WezTerm-compatible keymaps for macOS/Linux/Windows.
+The tracked config uses the `catppuccin-mocha` theme, `sonicterm-macos` keymap,
+Rec Mono St.Helens 14 with line-height 1.2, `TERM_PROGRAM=WezTerm`, 1000-line
+scrollback, no cursor blink, opaque Catppuccin Mocha chrome, software render
+mode auto, and WezTerm-compatible keymaps for macOS/Linux/Windows.
+
+**Keeping the theme across upstream pulls.** This repo is a fork: `origin` is
+this copy, `source` is upstream `D0n9X1n/dot-config`. Themes are split so the
+two never collide:
+
+| File | Owner | On `git pull source main` |
+| --- | --- | --- |
+| `themes/wezterm.toml` | upstream (Gruvbox dark hard) | fast-forwards cleanly — kept byte-identical to `source/main` |
+| `themes/catppuccin-mocha.toml` | this fork | untouched — upstream has no such file |
+| `sonicterm.toml` | shared | only `theme =` differs; upstream's edits land elsewhere in the file and auto-merge |
+
+SonicTerm resolves `theme = "catppuccin-mocha"` against
+`~/.sonicterm/themes/<name>.toml`, so the rendered colors are unchanged. To pull
+upstream: `git pull source main`. Do not merge the palette back into
+`wezterm.toml`.
 
 ### copilot-relay (`.copilot-relay/`)
 

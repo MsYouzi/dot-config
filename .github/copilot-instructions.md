@@ -18,6 +18,13 @@ directory, and `install.sh` links only its TOML config/keymap/theme files into
 secret-free file is linked into `~/.copilot-relay/`, while relay tokens and logs
 remain local and must not be committed.
 
+This repo is a fork: `origin` is MsYouzi/dot-config, `source` is upstream
+D0n9X1n/dot-config. `.sonicterm/themes/wezterm.toml` is upstream's Gruvbox file
+and must stay byte-identical to `source/main` so upstream pulls never conflict on
+it; this fork's palette lives in its own `.sonicterm/themes/catppuccin-mocha.toml`
+and is selected by `theme = "catppuccin-mocha"` in `sonicterm.toml`. Do not
+consolidate the two files back together.
+
 Adding a new config means dropping a dotfile at the repo root — `install.sh`
 picks it up automatically with no manifest to update. For SonicTerm, add TOML
 under `.sonicterm/`, `.sonicterm/keymaps/`, or `.sonicterm/themes/`.
