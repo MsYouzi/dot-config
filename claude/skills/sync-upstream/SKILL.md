@@ -139,6 +139,20 @@ If upstream touched `.sonicterm/`, confirm the palette survived byte-for-byte:
 git diff HEAD@{1} -- .sonicterm/themes/catppuccin-mocha.toml   # expect empty
 ```
 
+**Check for silently duplicated settings.** A clean auto-merge is not proof of a
+clean result. When upstream adds a setting this fork already had, git often
+keeps *both* — the hunks do not overlap, so there is no conflict to report. In
+`.tmux.conf` and the statuslines the last assignment wins, so nothing visibly
+breaks, and the duplicate survives unnoticed:
+
+```bash
+# flag options set more than once
+grep -oE '^set(-option)? -g [a-z-]+' .tmux.conf | sort | uniq -d
+```
+
+Investigate each hit: keep the fork's line if the values differ, otherwise drop
+the redundant one.
+
 ### Phase 5 — Apply and push
 
 Symlinks point at the repo, so merged content is live immediately for existing
