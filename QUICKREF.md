@@ -130,7 +130,15 @@ creates symlinks into `$HOME` (and `~/.oh-my-zsh/custom/`).
 - `<repo>/.copilot-relay/config.yaml` — secret-free relay config linked by
   `install.sh` to `~/.copilot-relay/config.yaml`. Pins `claudeSetup: false`,
   local server `127.0.0.1:4142`, `thinkEffort: max`, `gptModel: gpt-5.6-sol`,
-  and `opusModel: claude-opus-5`. Do **not** commit
+  and `opusModel: claude-opus-5`. `upstreamTimeoutSeconds: 300` is a
+  deliberate raise from the relay's 180 default — that budget spans *all*
+  upstream hops of one request, and a WebSearch turn takes three (chat →
+  search → final answer), so at `thinkEffort: max` the p99 sat exactly on the
+  180s ceiling. Hot-reloaded, so a value change needs no restart. **Do not add
+  comments to this file:** the relay rebuilds it from a fixed template on every
+  reload (`serializeConfig`) and writes back *through the symlink* into this
+  repo, so hand-written comments and formatting are silently stripped and only
+  key values survive. Record the *why* here in QUICKREF instead. Do **not** commit
   `~/.copilot-relay/github_token`, `copilot_token.json`, or `logs/`.
 - `<repo>/themes/apollo/` — **reference theme files; NOT auto-linked**.
   Apollo = Catppuccin Mocha + `#11111b` crust canvas.
