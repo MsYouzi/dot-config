@@ -172,11 +172,11 @@ SH
 }
 
 run_model_default_smoke() {
-  # Claude Code: Opus 5 is the startup default (Claude-facing "[1m]" label keeps
-  # 1M-context accounting); Sonnet/Haiku/small-fast stay on the GPT route.
+  # Claude Code: GPT 5.6 is the startup default (Claude-facing "[1m]" label keeps
+  # 1M-context accounting); Sonnet/Haiku/small-fast use the same GPT route.
   jq -e '
-    .env.ANTHROPIC_MODEL == "claude-opus-5[1m]" and
-    .model == "claude-opus-5[1m]" and
+    .env.ANTHROPIC_MODEL == "gpt-5.6-sol[1m]" and
+    .model == "gpt-5.6-sol[1m]" and
     .effortLevel == "max" and
     .env.MODEL_REASONING_EFFORT == "max" and
     .env.ANTHROPIC_DEFAULT_SONNET_MODEL == "gpt-5.6-sol[1m]" and
@@ -203,11 +203,11 @@ run_model_default_smoke() {
 
   # Launcher wrappers inject the same defaults (settings.json can be rewritten
   # at runtime, so the flags are the authoritative per-launch pin).
-  grep -Fq -- "--model 'claude-opus-5[1m]'" oh-my-zsh-custom/claude.zsh
-  grep -Fq -- "--model 'claude-opus-5[1m]' --effort max" oh-my-zsh-custom/cc.zsh
+  grep -Fq -- "--model 'gpt-5.6-sol[1m]'" oh-my-zsh-custom/claude.zsh
+  grep -Fq -- "--model 'gpt-5.6-sol[1m]' --effort max" oh-my-zsh-custom/cc.zsh
   grep -Fq -- "--model claude-opus-5 --context long_context --effort max" oh-my-zsh-custom/gg.zsh
 
-  echo "model defaults ok: claude-opus-5 @ max effort, 1M context (GPT route: gpt-5.6-sol)"
+  echo "model defaults ok: gpt-5.6-sol @ max effort, 1M context (Opus route: claude-opus-5)"
 }
 
 run_smoke() {

@@ -226,24 +226,24 @@ creates symlinks into `$HOME` (and `~/.oh-my-zsh/custom/`).
     Sets `ANTHROPIC_BASE_URL=http://127.0.0.1:4142`,
     `ANTHROPIC_AUTH_TOKEN=dummy` (Claude Code requires a token-shaped
     custom key; relay auth is handled by `npx copilot-relay auth`), and pins
-    **claude-opus-5 @ max effort, 1M context** as the
+    **gpt-5.6-sol @ max effort, 1M context** as the
     global default for every machine that runs `install.sh`:
-    `ANTHROPIC_MODEL=claude-opus-5[1m]`; wrappers also inject
-    `--model 'claude-opus-5[1m]' --effort max` because Claude Code can rewrite
+    `ANTHROPIC_MODEL=gpt-5.6-sol[1m]` and top-level
+    `model=gpt-5.6-sol[1m]`; wrappers also inject
+    `--model 'gpt-5.6-sol[1m]' --effort max` because Claude Code can rewrite
     `settings.json` at runtime. The `[1m]` suffix keeps Claude Code's
     **1M-context accounting** instead of falling
-    back to 200k (bare custom names default to 200k). `copilot-relay` matches
-    on the `opus` substring and maps the request to Copilot upstream
-    `opusModel: claude-opus-5`, ignoring the `[1m]` suffix — so the
-    Claude-facing label is cosmetic relay-side. The GPT route stays
-    reachable via `/model` or `--model 'gpt-5.6-sol[1m]'` (relay sends every
-    non-`opus` name to `gptModel: gpt-5.6-sol`),
-    `effortLevel="max"` (deepest reasoning client-side, no
-    `/effort` needed) plus `MODEL_REASONING_EFFORT=max` so the
+    back to 200k (bare custom names default to 200k). `copilot-relay` sends
+    every non-`opus` name to Copilot upstream `gptModel: gpt-5.6-sol`, ignoring
+    the `[1m]` suffix — so the Claude-facing label is cosmetic relay-side. The
+    Opus route stays reachable via `/model` or
+    `--model 'claude-opus-5[1m]'` (relay maps names containing `opus` to
+    `opusModel: claude-opus-5`), `effortLevel="max"` (deepest reasoning
+    client-side, no `/effort` needed) plus `MODEL_REASONING_EFFORT=max` so the
     statusline can display the pinned effort. Claude's Sonnet/Haiku/small-fast
-    env overrides remain pinned to Claude-facing `gpt-5.6-sol[1m]` so those
-    side-task tiers keep the GPT route at 1M accounting instead of falling back
-    to 200k; relay likewise maps those non-Opus requests to `gptModel`.
+    env overrides are also pinned to Claude-facing `gpt-5.6-sol[1m]`, keeping
+    those side-task tiers on the GPT route with 1M accounting instead of
+    falling back to 200k.
     Relay-side thinking is pinned by `~/.copilot-relay/config.yaml` as
     `thinkEffort: max`.
     Autonomous mode is enabled via

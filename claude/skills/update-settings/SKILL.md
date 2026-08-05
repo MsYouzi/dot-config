@@ -54,8 +54,9 @@ subagent UI and admission. Copilot keeps both, with the magic-wand glyph
 
 **Model routing.** Opus and Sonnet are separate families. Applying "the same
 model for the family" means within Opus **or** within Sonnet, never across.
-Current: anything containing `opus` → `claude-opus-5[1m]`; Sonnet/Haiku/small-fast
-→ `gpt-5.6-sol[1m]`. Keep the `[1m]` suffix — a bare custom name makes Claude
+Current startup default: `gpt-5.6-sol[1m]`. Anything containing `opus` routes to
+`claude-opus-5[1m]`; Sonnet/Haiku/small-fast route to `gpt-5.6-sol[1m]`. Keep
+the `[1m]` suffix — a bare custom name makes Claude
 Code fall back to 200k context accounting instead of 1M.
 
 **launchd.** Plists are templates, not symlinks. install.sh substitutes

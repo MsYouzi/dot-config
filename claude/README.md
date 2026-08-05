@@ -58,7 +58,7 @@ The `oh-my-zsh-custom/claude.zsh` wrapper launches `claude` with
   "env": {
     "ANTHROPIC_BASE_URL": "http://127.0.0.1:4142",
     "ANTHROPIC_AUTH_TOKEN": "dummy",
-    "ANTHROPIC_MODEL": "claude-opus-5[1m]",
+    "ANTHROPIC_MODEL": "gpt-5.6-sol[1m]",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "gpt-5.6-sol[1m]",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "gpt-5.6-sol[1m]",
     "ANTHROPIC_SMALL_FAST_MODEL": "gpt-5.6-sol[1m]",
@@ -66,7 +66,7 @@ The `oh-my-zsh-custom/claude.zsh` wrapper launches `claude` with
     "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS": "16"
   },
   "permissions": { "allow": ["*"], "defaultMode": "auto" },
-  "model": "claude-opus-5[1m]",
+  "model": "gpt-5.6-sol[1m]",
   "statusLine": {
     "type": "command",
     "command": "~/.claude/statusline.sh",
@@ -84,14 +84,14 @@ The `oh-my-zsh-custom/claude.zsh` wrapper launches `claude` with
 |---|---|
 | `env.ANTHROPIC_BASE_URL` | Points Claude Code at the local proxy instead of `api.anthropic.com`. |
 | `env.ANTHROPIC_AUTH_TOKEN` | Required by Claude Code's startup check. `dummy` is fine; real auth happens via `npx copilot-relay auth`. **First launch will prompt** "Use this custom API key? (y/N)" — pick **Yes**, otherwise it lands in `~/.claude.json#customApiKeyResponses.rejected` and Claude refuses to use it. |
-| `env.ANTHROPIC_MODEL` | Claude Code-facing default, `claude-opus-5[1m]`. The `[1m]` suffix keeps Claude Code's 1M-context accounting (a bare custom name is treated as 200k). Relay matches the `opus` substring and maps the request to upstream `opusModel` (currently `claude-opus-5`), so the Claude-facing label is cosmetic relay-side. The GPT route stays reachable — pick it via `/model` or `--model 'gpt-5.6-sol[1m]'`. |
+| `env.ANTHROPIC_MODEL` | Claude Code-facing default, `gpt-5.6-sol[1m]`. The `[1m]` suffix keeps Claude Code's 1M-context accounting (a bare custom name is treated as 200k). Relay maps this non-`opus` name to upstream `gptModel` (currently `gpt-5.6-sol`), so the Claude-facing suffix is cosmetic relay-side. The Opus route stays reachable — pick it via `/model` or `--model 'claude-opus-5[1m]'`. |
 | `env.ANTHROPIC_DEFAULT_SONNET_MODEL` | Routes every Sonnet alias through Claude-facing `gpt-5.6-sol[1m]`; relay maps it to upstream `gptModel`. |
 | `env.ANTHROPIC_DEFAULT_HAIKU_MODEL` | Routes current Claude Code's Haiku tier, including sub-agents and small-fast side tasks, through `gpt-5.6-sol[1m]`. |
 | `env.ANTHROPIC_SMALL_FAST_MODEL` | Legacy small-fast alias for older Claude Code versions; pinned to `gpt-5.6-sol[1m]`. |
 | `env.MODEL_REASONING_EFFORT` | Kept for the custom statusline; upstream thinking is controlled by `thinkEffort` in `~/.copilot-relay/config.yaml`. |
 | `env.CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` | Claude Code's native concurrent-subagent limit, explicitly set to `16` (requires Claude Code v2.1.217+). |
 | `effortLevel` | Claude Code's client-side reasoning budget. `low / medium / high / xhigh / max`. |
-| `model` | Top-level default; set to `claude-opus-5[1m]`. Do not use `default` with `copilot-relay`, because relay routes non-`opus` names to `gptModel` — the `[1m]` suffix is what keeps Claude Code's 1M accounting (bare custom names are 200k). |
+| `model` | Top-level default; set to `gpt-5.6-sol[1m]`. Do not use `default` with `copilot-relay`, because relay routes non-`opus` names to `gptModel` — the `[1m]` suffix is what keeps Claude Code's 1M accounting (bare custom names are 200k). |
 
 ### Native concurrent-subagent limit
 
@@ -113,8 +113,8 @@ Claude Code's `/model` picker is **hard-coded** to its own lineup
 (Default / Sonnet / Sonnet-1M / Haiku / Custom). There is no setting to
 hide entries or substitute a custom list. The pragmatic workaround is the
 `ANTHROPIC_*_MODEL` env vars above: Sonnet / Haiku / small-fast picks all
-route to `gpt-5.6-sol[1m]`, the default is `claude-opus-5[1m]`, and the GPT
-route is reachable via `--model 'gpt-5.6-sol[1m]'`.
+route to `gpt-5.6-sol[1m]`, which is also the default. The Opus route remains
+reachable via `--model 'claude-opus-5[1m]'`.
 
 ### Relay config
 
@@ -132,14 +132,13 @@ gptModel: gpt-5.6-sol
 opusModel: claude-opus-5
 ```
 
-> **max + 1M context.** The default route is the Claude-facing `claude-opus-5[1m]`;
-> relay matches the `opus` substring and sends it to `opusModel`
-> (`claude-opus-5`, natively 1M on Copilot), and
-> `thinkEffort: max` asks the relay to forward max reasoning per request. The
-> bracketed `[1m]` suffix lives on the *Claude-facing* name to engage Claude
-> Code's 1M window; relay ignores the suffix. The GPT route (`gptModel:
-> gpt-5.6-sol`) stays configured for Sonnet/Haiku/small-fast tiers and is
-> reachable via `--model 'gpt-5.6-sol[1m]'`.
+> **max + 1M context.** The default route is the Claude-facing `gpt-5.6-sol[1m]`;
+> relay treats it as a non-`opus` name and sends it to `gptModel`
+> (`gpt-5.6-sol`), while `thinkEffort: max` asks the relay to forward max
+> reasoning per request. The bracketed `[1m]` suffix lives on the
+> *Claude-facing* name to engage Claude Code's 1M window; relay ignores the
+> suffix. The Opus route (`opusModel: claude-opus-5`) stays configured and is
+> reachable via `--model 'claude-opus-5[1m]'`.
 
 ---
 
