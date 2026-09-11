@@ -1,0 +1,52 @@
+theme = "apollo"
+keymap = "sonicterm-macos"
+locale = ""
+quit_on_last_window_close = true
+tab_max_width = 240
+
+[font]
+family = "Rec Mono St.Helens"
+size = 14
+line_height = 1.2
+weight_scale = 1.25
+
+[window]
+cols = 100
+rows = 30
+padding_left = 12
+padding_right = 12
+padding_top = 8
+padding_bottom = 4
+decorations = true
+warm_window_pool = 2
+
+[terminal]
+# Only Copilot children receive the WezTerm compatibility identity.
+term_program = "SonicTerm"
+scrollback = 1000
+cursor_blink = false
+cursor_shape = "block"
+
+[logging]
+level = "warn"
+max_file_size_mb = 10
+max_rotated_files = 3
+max_age_days = 2
+max_crash_dumps = 10
+max_crash_age_days = 2
+
+[appearance]
+backdrop = "opaque"
+opacity = 1.0
+scrollbar = "auto"
+panel_padding = 2
+software_render_mode = "auto"
+
+[accessibility]
+high_contrast = false
+reduced_motion = false
+strong_focus = false
+
+[notifications]
+long_command = false
+threshold_secs = 10

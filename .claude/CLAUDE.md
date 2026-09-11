@@ -1,226 +1,59 @@
 # CLAUDE.md
 
-> Agent-facing instructions for Claude Code (and similar Anthropic agents)
-> working on this repository. Mirrors `.github/copilot-instructions.md`,
-> with Claude-Code-specific guidance added.
+Read `wiki/README.md` first.
 
-## Read these first
+The Wiki is the full source of truth for this repo. Do not copy its full help into this file.
 
-1. **`QUICKREF.md`** — single source of truth for how this repo works.
-   Update it when behavior changes.
-2. **`ReadMe.md`** — human-facing README. Update separately when
-   user-visible details change.
+## Repo map
 
-## Repo summary
+- `config/` has config used now.
+- `scripts/` has code that runs and external release pins.
+- `wiki/` has all full help.
+- `install.sh` stays at the root.
 
-Personal dotfiles, synced across machines via git + symlinks. macOS-only;
-`install.sh` is the single installer.
+`config/manifest.tsv` is the install list. A new managed file needs a manifest row.
 
+Tool-required files stay at fixed paths: `.claude/CLAUDE.md`, `.github/copilot-instructions.md`, `.github/workflows/*.yml`, `.gitignore`.
+
+## Instruction scope
+
+`config/` holds the globally synced config for every project. Globals keep reusable behavior plus one conditional pointer back here. Anything repo-only stays in this file.
+
+## Model policy
+
+Keep native client names. Claude Code uses `claude-sonnet-5[1m]` and `claude-haiku-4-5-20251001`.
+
+The relay maps every non-Opus route through `gptModel` to `gpt-6-astra`. Opus stays separate as `claude-opus-5`.
+
+Do not replace a client identity with GPT. Never put a GPT id or a display override name back into Claude settings. Keep Sonnet and Opus model families separate.
+
+## Before an edit
+
+Read the matching Wiki page:
+
+- config and links: `wiki/Repository-Operations.md`
+- Claude: `wiki/Claude-Code.md`
+- Copilot: `wiki/Copilot-CLI.md`
+- RMUX: `wiki/RMUX.md`
+- terminal and zsh: `wiki/SonicTerm-and-Shell.md`
+- services: `wiki/Services-and-Automation.md`
+- checks and release: `wiki/Development-and-Releases.md`
+
+Keep English and `-zh-CN` Wiki pages together. Keep the root README short.
+
+Keep the status-line layout and cache aligned. Preserve the documented provider metrics and live-subagent differences. Launchd files under `config/launchd/` are templates; run `install.sh` to render them.
+
+## Check
+
+```sh
+scripts/check.sh all
 ```
-.
-├── install.sh                   # idempotent linker (macOS only)
-├── .tmux.conf                   # symlinked into $HOME
-├── oh-my-zsh-custom/            # zsh customs
-├── claude/                      # Claude Code config + statusline
-│   ├── settings.json
-│   └── statusline.sh
-├── copilot/                     # Same shape for GitHub Copilot CLI
-├── wezterm/wezterm.lua          # symlinked to ~/.wezterm.lua
-├── .sonicterm/                  # SonicTerm TOML config linked into ~/.sonicterm/
-├── .copilot-relay/config.yaml   # secret-free relay config linked into ~/.copilot-relay/
-├── launchd/                     # macOS launchd agent templates (rendered by install.sh)
-├── mcp-shared.json              # secret-free MCP entries (synced)
-└── .github/, .claude/
-```
 
-## Architecture rules
+For a config change, run `./install.sh` twice after checks pass. Then verify the links and launchd jobs named in the Wiki.
 
-- **`mcp-shared.json` is for non-secret MCP entries only.** Anything
-  needing a token/key goes in the gitignored
-  `~/.config/github-copilot/mcp.json` per device — install.sh's merge
-  step preserves it.
-- **`claude/statusline.sh` and `copilot/statusline.sh` must stay
-  functionally aligned.** Same segments, same output shape, same per-cwd 5s git
-  cache. When you change one, port the change to the sibling. **Colors are no
-  longer part of that manual duty:** both scripts keep upstream's `C_*`/`CB_*`
-  block byte-identical and source `themes/apollo/statusline-palette.sh` right
-  after it, so the palette is shared structurally and cannot drift. Edit colors
-  **there**, never inline — inline edits re-create the upstream collision the
-  split exists to remove. **Known intentional divergence (do not "re-align"
-  away):** Claude's statusline has NO live-subagent renderings — neither the
-  inline `subagents`/`Tasks` count nor the bottom live-agent tree — because
-  Claude Code ships its own native subagent UI. Copilot keeps both, and its
-  subagent glyph is the magic-wand (U+F0D0) while Claude has no subagent glyph
-  at all. Claude Code handles concurrent admission natively; the statusline has
-  no counter state to read.
-- **Claude Code's native concurrent-subagent limit is set to 16.** Keep
-  `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS="16"` in `claude/settings.json` and
-  require Claude Code v2.1.217+. Do not describe it as an absolute ceiling:
-  `/subtask` and resumed agents can pass the admission boundary, ultracode is
-  exempt, and workflows/agent teams use separate limits. Do not restore the
-  obsolete lifecycle counter hook.
-- **launchd plists in `launchd/` are templates, not symlinks.**
-  install.sh substitutes `__HOME__` -> `$HOME` (launchd doesn't expand
-  `$HOME` at runtime) and `__SRC_DIR__` -> this repo's absolute path (for
-  agents that exec a tracked script, e.g. `clean-npm-caches.sh`), writes the
-  rendered file to `~/Library/LaunchAgents/`, then `bootout`+`bootstrap` into
-  `gui/<uid>`. macOS-only; install.sh skips this step on other OSes.
-  Current agents: `com.d0n9x1n.copilot-relay` (relay proxy, on login) and
-  `com.d0n9x1n.npm-cache-clean` (weekly npm/npx cache prune, Sun 03:17).
-- **install.sh bootstraps a brand-new Mac.** It installs Homebrew if missing,
-  Homebrew formulae/casks (including Claude Code via `claude-code`), npm globals
-  for Copilot CLI + `copilot-relay`, oh-my-zsh, custom RecMono fonts from
-  `MOSconfig/recursive-code-config`, then links configs.
-- **`.sonicterm/` is tracked config, not runtime state.** `install.sh` links only
-  `.sonicterm/*.toml`, `.sonicterm/keymaps/*.toml`, and
-  `.sonicterm/themes/*.toml` into `~/.sonicterm/`; do not commit SonicTerm
-  `logs/` or runtime backup files.
-- **This repo is a fork; keep upstream-owned files pristine.** `origin` is
-  MsYouzi/dot-config (this copy), `source` is upstream D0n9X1n/dot-config.
-  `.sonicterm/themes/wezterm.toml` is **upstream's** file (Gruvbox dark hard) and
-  must stay byte-identical to `source/main` so `git pull source main` never
-  conflicts on it. This fork's palette lives in its own file,
-  `.sonicterm/themes/catppuccin-mocha.toml`, which upstream does not have;
-  `sonicterm.toml` selects it with `theme = "catppuccin-mocha"` (SonicTerm
-  resolves names against `~/.sonicterm/themes/<name>.toml`). Do **not**
-  consolidate the palette back into `wezterm.toml` and do **not** "fix" it to
-  match the theme name — the two-file split is deliberate and is what keeps
-  upstream pulls conflict-free. Verify with
-  `git diff source/main -- .sonicterm/themes/wezterm.toml` (must be empty).
-  **Every theme this fork overrides is protected the same way:** upstream's
-  block stays byte-identical and the fork's palette lives in a fork-only file
-  applied afterwards.
+## Safety
 
-  | Consumer | Upstream owns | Fork owns (edit here) |
-  | --- | --- | --- |
-  | statuslines | inline `C_*`/`CB_*` block | `themes/apollo/statusline-palette.sh` |
-  | tmux | its theme block | `.tmux.fork.conf` (`source-file -q`, last wins) |
-  | WezTerm | theme block + `DARK_BG`/`FG_*` locals | `wezterm/palette-fork.lua` |
-  | SonicTerm | `themes/wezterm.toml` | `themes/catppuccin-mocha.toml` |
+This repo is public. Do not commit tokens, keys, auth files, logs, runtime state, SonicTerm save locks, or `.claude/worktrees/`.
 
-  Never move a palette back into upstream's block — that is the collision this
-  layout exists to remove. Verify the color files are additive-only with
-  `git diff source/main --stat -- .tmux.conf wezterm/wezterm.lua claude/statusline.sh copilot/statusline.sh`
-  (insertions only, zero deletions).
-  Note `themes/apollo/*` (the rest) and the docs — `ReadMe.md`, `QUICKREF.md`,
-  `CLAUDE.md`, `copilot-instructions.md` — are still diverged in place. The docs
-  are upstream's two most-edited files and will conflict on most pulls; that is
-  accepted and resolved by hand, since prose has no structural fix.
-- **Skills live once, in `claude/skills/`, and serve both runtimes.**
-  `install.sh` links each `claude/skills/<name>/` into **both**
-  `~/.claude/skills/<name>/` and `~/.copilot/skills/<name>/`. Copilot CLI reads
-  personal skills from `~/.copilot/skills/` (its own `--help` says so:
-  "Personal ~/.copilot/skills/ or ~/.agents/skills/") using the same
-  `SKILL.md` + frontmatter format Claude Code uses. Claude Code is primary:
-  author and edit skills under `claude/skills/` only. Do **not** create a
-  parallel copy under `copilot/` — the whole point is one file, two symlinks,
-  no drift.
-- **`sync-upstream` is the skill for pulling from `source`.** When the user asks
-  to pull/merge/sync upstream (D0n9X1n), follow
-  `claude/skills/sync-upstream/SKILL.md` rather than improvising: it encodes the
-  merge-not-rebase rule, the per-file conflict playbook, and the four
-  `.sonicterm/` invariants that prove the fork's theme survived.
-- **`.copilot-relay/config.yaml` is tracked config, not auth state.**
-  `install.sh` links only that file into `~/.copilot-relay/`; never commit
-  `github_token`, `copilot_token.json`, or relay logs.
-
-## Conventions
-
-### Shell scripts (.sh)
-
-- `set -euo pipefail` strict mode.
-- Bash 3.2 compatible (macOS default). Avoid `${arr[@]}` quirks,
-  `\u` escapes, associative arrays, `printf '%(...)T'`.
-- POSIX-portable utilities: `awk`, `sed`, `grep`, `find -print0`,
-  `stat -f %m || stat -c %Y` fallback (Darwin vs GNU).
-- Statusline scripts use `printf -v __SEG` instead of `$(seg_$s)`
-  capture — saves one fork per segment.
-
-### Config files
-
-- Color scheme: **Catppuccin Mocha** (WezTerm builtin); matching
-  Catppuccin accents in tmux + statusline.
-- Statusline label icons are **FontAwesome** glyphs (U+F0xx–F2xx),
-  rendered via raw UTF-8 bytes in bash (since bash 3.2 doesn't support
-  `\u`).
-- Five-line layout: literal `\n` tokens in `SEGMENTS` introduce line
-  breaks. L1 time/run/api/cost · L2 model/effort/context ·
-  L3 mcp/skills/agents/style · L4 cwd path · L5 repo/branch/diff/stash/worktree.
-- Default statusline icon accents should avoid repeating colors for adjacent
-  segments and for segments in the same visual column.
-
-## When you make changes
-
-- **Bump version + tag**. We use semver-ish tags (`v0.X.Y`); patch for
-  bugfixes, minor for new features, major for breaking changes.
-  Pushing a `v*.*.*` tag triggers `.github/workflows/release.yml`, which
-  publishes a GitHub Release whose body is the commit-subject list between
-  the new tag and the previous reachable `v*.*.*` tag.
-- **Update QUICKREF.md** when behavior changes — the agent-facing brief
-  must stay accurate.
-- **Update ReadMe.md** when user-visible details change.
-- **Run local/CI parity checks**:
-
-  ```bash
-  scripts/check.sh all
-  ```
-
-  CI runs the same script: macOS uses `scripts/check.sh smoke`; Ubuntu
-  installs ShellCheck and runs `scripts/check.sh shellcheck`.
-
-## Things that have bitten us
-
-- `~/.claude/settings.json` and `~/.claude.json` are **different files**
-  with different responsibilities. Settings: behavior. `.claude.json`
-  (top level): MCP servers + state.
-- `refreshInterval` is **nested inside `statusLine`**, not top-level.
-  Trust the binary's strings table over documentation.
-- `permissions.defaultMode: "bypassPermissions"` is **silently rejected**
-  by Claude Code's binary ("bypassPermissions mode is disabled by
-  settings"). The CLI flag `--permission-mode bypassPermissions` IS
-  honored. Wrap launchers (oh-my-zsh-custom/claude.zsh,
-  oh-my-zsh-custom/cc.zsh) to inject the flag.
-- `skipDangerousModePermissionPrompt` is dead config (only meaningful
-  when bypass mode is active, which is gated off in settings). Claude
-  Code's runtime sometimes re-adds it on its own writes; treat as noise.
-- WezTerm's `inactive_pane_hsb` defaults to `{1, 0.9, 0.8}` — that
-  desaturates unfocused windows and makes side-by-side comparisons
-  look mismatched. Set `{1, 1, 1}` to disable.
-- tmux 3.2+ uses `terminal-features ... :RGB` to advertise truecolor;
-  `terminal-overrides ... :RGB` alone leaves tmux quantizing into the
-  256-color cube.
-- GitHub's hosted MCP doesn't support OAuth Dynamic Client Registration
-  with Anthropic's SDK. Use Bearer-PAT auth in HTTP headers (per
-  github/github-mcp-server's official Claude Code guide).
-
-## Model-routing convention (claude/settings.json)
-
-Sonnet and Opus are treated as **separate model families** by user
-convention. Current routing:
-
-- **Default** (`ANTHROPIC_MODEL` + zsh wrappers) → `claude-opus-5[1m]`. Relay
-  matches the `opus` substring and maps it to upstream `claude-opus-5`,
-  ignoring the suffix; the `[1m]` suffix keeps Claude Code's 1M-context
-  accounting (bare custom names fall back to 200k).
-- Opus 4-5 / 4-6 / 4-7 / 4-8 / 5 → `claude-opus-5[1m]` — the **startup
-  default**. Any Claude-facing label containing `opus` routes to
-  upstream `opusModel: claude-opus-5`.
-- Sonnet 4-5 / 4-6 → Claude-facing `gpt-5.6-sol[1m]` (relay upstream = `gptModel`)
-- Haiku 4-5 → `gpt-5.6-sol[1m]`
-- gpt-5-mini → `gpt-5.6-sol[1m]`
-
-The GPT route stays fully configured at max effort + 1M context and is
-reachable via `/model` or `--model 'gpt-5.6-sol[1m]'`; Claude's
-Sonnet/Haiku/small-fast side-task tiers still use it.
-
-When asked to "use the same model for the family", apply within Opus or
-within Sonnet — never both. When adding a new alias, default to the
-family rule above.
-
-## Don't do
-
-- Don't commit secrets. The repo is public on github.com/D0n9X1n/dot-config.
-- Don't add files outside `claude/`, `copilot/`, `oh-my-zsh-custom/`,
-  `wezterm/` without updating install.sh.
-- macOS-only. The repo is not regression-tested on other platforms.
-- Don't `--no-verify` git commits unless the user explicitly asks.
+Do not force-push. Do not use `--no-verify` unless the user asks.
+After merging a PR, complete the branch/worktree cleanup in `wiki/Development-and-Releases.md`, preserving active and unmerged work.

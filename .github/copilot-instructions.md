@@ -1,81 +1,55 @@
 # Copilot Instructions
 
-Read `QUICKREF.md` at the repo root first — it is the single source of truth
-for how this repository works. Keep it up to date when making changes.
+Read `wiki/README.md` first.
 
-`ReadMe.md` is the human-facing README; update it separately when user-visible
-details change.
+The Wiki is the full source of truth for this repo. Do not copy its full help into this file.
 
-## Architecture
+## Repo map
 
-This is a dotfiles repository using a symlink-based linker pattern. `install.sh`
-symlinks every **top-level non-ignored dotfile** (files starting with `.`) into
-`$HOME`. Directories, nested files, and gitignored generated files are never
-linked, with one explicit exception: `.sonicterm/` is tracked as an app config
-directory, and `install.sh` links only its TOML config/keymap/theme files into
-`~/.sonicterm/` so logs and runtime backups stay machine-local.
-`.copilot-relay/config.yaml` is another explicit app-config file; only that
-secret-free file is linked into `~/.copilot-relay/`, while relay tokens and logs
-remain local and must not be committed.
+- `config/` has config used now.
+- `scripts/` has code that runs and external release pins.
+- `wiki/` has all full help.
+- `install.sh` stays at the root.
 
-Skills are tracked once under `claude/skills/<name>/SKILL.md` and linked by
-`install.sh` into both `~/.claude/skills/` and `~/.copilot/skills/`, so the same
-skill loads in Claude Code and Copilot CLI. Claude Code is primary — author
-skills under `claude/skills/` and never add a duplicate under `copilot/`. To
-pull upstream changes from the `source` remote, follow the `sync-upstream`
-skill; it encodes the merge-not-rebase rule and the checks that prove this
-fork's SonicTerm theme survived the merge.
+`config/manifest.tsv` is the install list. A new managed file needs a manifest row.
 
-This repo is a fork: `origin` is MsYouzi/dot-config, `source` is upstream
-D0n9X1n/dot-config. `.sonicterm/themes/wezterm.toml` is upstream's Gruvbox file
-and must stay byte-identical to `source/main` so upstream pulls never conflict on
-it; this fork's palette lives in its own `.sonicterm/themes/catppuccin-mocha.toml`
-and is selected by `theme = "catppuccin-mocha"` in `sonicterm.toml`. Do not
-consolidate the two files back together. Every other theme follows the same
-pattern — upstream's block stays byte-identical, the fork's palette lives in a
-fork-only file applied afterwards: statuslines source
-`themes/apollo/statusline-palette.sh`, `.tmux.conf` sources `.tmux.fork.conf`
-last, and `wezterm.lua` dofiles `wezterm/palette-fork.lua`. Edit colors in those
-files, never inline, and never fold them back into upstream's block.
+Tool-required files stay at fixed paths: `.claude/CLAUDE.md`, `.github/copilot-instructions.md`, `.github/workflows/*.yml`, `.gitignore`.
 
-Adding a new config means dropping a dotfile at the repo root — `install.sh`
-picks it up automatically with no manifest to update. For SonicTerm, add TOML
-under `.sonicterm/`, `.sonicterm/keymaps/`, or `.sonicterm/themes/`.
+## Instruction scope
 
-The install script also handles brand-new macOS bootstrap: installs Homebrew if
-missing, installs Homebrew formulae/casks (including Claude Code via
-`claude-code`), installs npm globals for Copilot CLI + `copilot-relay`, installs
-oh-my-zsh, downloads custom RecMono fonts from `MOSconfig/recursive-code-config`,
-and then links configs. On non-macOS systems it skips installation and only
-links.
+`config/` holds the globally synced config for every project. Globals keep reusable behavior plus one conditional pointer back here. Anything repo-only stays in this file.
 
-## Conventions
+## Model policy
 
-- **Shell scripts** use `set -euo pipefail` strict mode and POSIX-compatible
-  patterns where possible.
-- **Claude Code's native concurrent-subagent limit is set to 16.** Keep
-  `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS="16"` in `claude/settings.json` and
-  require Claude Code v2.1.217+. Do not describe it as an absolute ceiling:
-  `/subtask` and resumed agents can pass the admission boundary, ultracode is
-  exempt, and workflows/agent teams use separate limits. Do not restore the
-  obsolete lifecycle counter hook.
-- **WezTerm config** (`.wezterm.lua`) is Lua. It uses `wezterm.config_builder()`
-  and adapts font weight and FreeType hinting at runtime based on display DPI
-  (Retina vs non-Retina) via `window-config-reloaded` / `window-resized` events.
-- Color scheme is **Catppuccin Mocha** throughout. Tab bar colors are defined as
-  local constants at the top of the colors section — reuse those when adding
-  UI elements.
-- Tab rendering uses a custom `format-tab-title` handler with Nerd Font icons
-  mapped per process name. To add icons for new tools, extend the
-  `process_icons` table.
+Keep native client names. Claude Code uses `claude-sonnet-5[1m]` and `claude-haiku-4-5-20251001`.
 
-## How to test changes
+The relay maps every non-Opus route through `gptModel` to `gpt-6-astra`. Opus stays separate as `claude-opus-5`.
 
-There is no automated test suite. To verify:
+Do not replace a client identity with GPT. Never put a GPT id or a display override name back into Claude settings. Keep Sonnet and Opus model families separate.
 
-- **Shell/install/statusline changes**: Run `scripts/check.sh all`.
-- **install.sh behavior**: After `scripts/check.sh all`, test in a throwaway
-  directory with `HOME=/tmp/test-home ./install.sh` when the change affects
-  linking/bootstrap behavior.
-- **.wezterm.lua**: Open WezTerm — it live-reloads on save. Check the debug
-  overlay (`Ctrl+Shift+L`) for Lua errors.
+Copilot CLI keeps its own `gpt-6-astra` settings. Do not align it with the Claude client ids.
+
+## Before an edit
+
+Read the matching Wiki page. Use `wiki/Development-and-Releases.md` for checks, Wiki publish, issues, tags, and releases.
+
+Keep English and `-zh-CN` pages together. Keep the root README short.
+
+Keep the status-line layout and cache aligned. Preserve the documented provider metrics and live-subagent differences.
+
+Launchd files under `config/launchd/` are templates. Run `install.sh` to render them.
+
+## Check
+
+```sh
+scripts/check.sh all
+```
+
+For config changes, run `./install.sh` twice after checks pass.
+
+## Safety
+
+This repo is public. Do not commit tokens, keys, auth files, logs, runtime state, SonicTerm save locks, or `.claude/worktrees/`.
+
+Do not force-push. Do not use `--no-verify` unless the user asks.
+After merging a PR, complete the branch/worktree cleanup in `wiki/Development-and-Releases.md`, preserving active and unmerged work.

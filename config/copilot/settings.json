@@ -1,0 +1,70 @@
+{
+  "model": "gpt-6-astra",
+  "contextTier": "long_context",
+  "defaultPermissionMode": "allow-all",
+  "theme": "default",
+  "renderMarkdown": true,
+  "logLevel": "all",
+  "experimental": true,
+  "banner": "always",
+  "beep": true,
+  "mouse": true,
+  "stream": true,
+  "keepAlive": "busy",
+  "continueOnAutoMode": true,
+  "updateTerminalTitle": true,
+  "compactPaste": true,
+  "respectGitignore": true,
+  "includeCoAuthoredBy": true,
+  "footer": {
+    "showModelEffort": false,
+    "showDirectory": false,
+    "showBranch": false,
+    "showContextWindow": false,
+    "showQuota": false,
+    "showAgent": false,
+    "showCodeChanges": false,
+    "showUsername": false,
+    "showCustom": true
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "~/.copilot/statusline.sh"
+  },
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": "~/.copilot/subagent-state.sh reset",
+        "timeoutSec": 2
+      }
+    ],
+    "sessionEnd": [
+      {
+        "type": "command",
+        "bash": "~/.copilot/subagent-state.sh reset",
+        "timeoutSec": 2
+      }
+    ],
+    "subagentStart": [
+      {
+        "type": "command",
+        "bash": "~/.copilot/subagent-state.sh start",
+        "timeoutSec": 2
+      }
+    ],
+    "subagentStop": [
+      {
+        "type": "command",
+        "bash": "~/.copilot/subagent-state.sh stop",
+        "timeoutSec": 2
+      }
+    ]
+  },
+  "ide": {
+    "autoConnect": true,
+    "openDiffOnEdit": true
+  },
+  "effortLevel": "medium",
+  "showReasoning": false
+}

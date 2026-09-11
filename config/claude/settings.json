@@ -1,0 +1,50 @@
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "http://127.0.0.1:4142",
+    "ANTHROPIC_AUTH_TOKEN": "dummy",
+    "ANTHROPIC_MODEL": "claude-sonnet-5[1m]",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-5[1m]",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5-20251001",
+    "ANTHROPIC_SMALL_FAST_MODEL": "claude-haiku-4-5-20251001",
+    "MODEL_REASONING_EFFORT": "medium",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80",
+    "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS": "16"
+  },
+  "permissions": {
+    "allow": [],
+    "defaultMode": "auto"
+  },
+  "model": "sonnet",
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/statusline.sh",
+    "padding": 0,
+    "refreshInterval": 100
+  },
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true,
+    "claude-code-wakatime@wakatime": true,
+    "rust-analyzer-lsp@claude-plugins-official": true,
+    "clangd-lsp@claude-plugins-official": true,
+    "swift-lsp@claude-plugins-official": true
+  },
+  "extraKnownMarketplaces": {
+    "wakatime": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/wakatime/claude-code-wakatime.git"
+      }
+    }
+  },
+  "feedbackDrafts": "off",
+  "autoCompactWindow": 700000,
+  "skipDangerousModePermissionPrompt": true,
+  "theme": "custom:apollo",
+  "autoCompactEnabled": true,
+  "skipAutoPermissionPrompt": true,
+  "modelSettings": {
+    "claude-sonnet-5": {
+      "effortLevel": "medium"
+    }
+  }
+}
