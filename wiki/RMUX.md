@@ -52,14 +52,16 @@ The profile is adapted from RMUX's v0.10.0 human-friendly example and selected c
 | History | 100000 lines |
 | Window/pane indices | Start at 1; windows renumber after close |
 | Copy mode | Vi keys; `pbcopy` plus OSC 52 |
-| Status | Top, styled by the pinned Apollo RMUX release |
+| Status | One bottom row, styled by the pinned Apollo RMUX release |
 | Titles | Automatic rename off; `#S · #W` propagated outward |
 | Terminal identity | `TERM=tmux-256color`; `TERM_PROGRAM=rmux` is preserved |
 | Working directory | Active pane OSC 7 reports are relayed to SonicTerm |
 
 The config clears stale `TERMINFO`, `TERMINFO_DIRS`, and `TERMCAP` inherited by a long-lived daemon, then sets `COLORTERM=truecolor` and `FORCE_COLOR=3`. It does not clear RMUX's own `TERM_PROGRAM` identity.
 
-`install.sh` verifies the official `rmux-apollo-theme` release and links its theme-only config under `~/.config/rmux-apollo-theme/`. The local RMUX file sources it for status, window, pane, message, and copy-mode styles. Local status strings keep content only, so they do not override upstream colors. No plugin manager or shell bootstrap is added.
+`install.sh` verifies the official `rmux-apollo-theme` release and links its theme-only config under `~/.config/rmux-apollo-theme/`. The local RMUX file sources it for status, window, pane, message, and copy-mode styles. The bar matches the local bufferline.nvim setup: slope separators, a dark-blue active tab with bold white text, and inactive tabs on the bar background. Only the active-tab colors are a fixed bufferline-specific override; all other colors come from Apollo. No plugin manager or shell bootstrap is added.
+
+The bottom bar shows a red, slanted session label and slanted, numbered window tabs on the left, with a plain `HH:MM` clock on the right. A one-cell gap separates the label and tabs. Session names are capped at 19 display cells so both sloped ends fit within the 24-cell label budget. Activity and bell colors remain visible. `PREFIX` appears while the prefix is active; `ZOOM` marks a zoomed window. Sloped ends use the same Powerline glyphs as bufferline's `slope` style (`U+E0BA` and `U+E0BC`), so the terminal font or its fallback must support them. The bar has no full date or decorative clock icon.
 
 The outer `xterm-256color` capability includes `osc7`, and `set-titles` is enabled. Oh My Zsh's `omz_termsupport_cwd` hook emits a host-qualified OSC 7 report at each prompt. RMUX records that report per pane and relays the active pane's path to SonicTerm, so relative file paths resolve against the correct directory. `#{pane_current_path}` is process metadata and does not replace the shell report. After changing `terminal-features`, reload the config and detach/reattach so the client capabilities are resolved again.
 
@@ -71,13 +73,30 @@ New SonicTerm tabs open normal shells. The late-loading `zz-rmux.zsh` file provi
 rr main       # create or resume main
 rl            # list all sessions
 rd main       # delete main
+rs            # save all sessions, confirm, restart, restore
+rh            # helper help, parent PID, and upgrade steps
 ```
 
-`rr <name>` checks whether the session exists, runs `attach-session` when it does, and runs `new-session` only when it is absent. It prints which path it chose. `rd <name>` runs `kill-session`, so it permanently ends that session. SonicTerm advertises its real `TERM_PROGRAM=SonicTerm`; only Copilot child processes receive the WezTerm compatibility identity.
+`rr <name>` attaches to an exact session name or creates it when absent. A new server starts through a short-lived detached bootstrap; `rr` verifies the daemon's **parent PID is 1** before attaching. The terminal still owns the attached client, not the daemon. Existing servers are reused without restarting or forcibly reparenting them. `rd <name>` permanently ends that session. SonicTerm advertises its real `TERM_PROGRAM=SonicTerm`; only Copilot child processes receive the WezTerm compatibility identity.
 
 Inside RMUX, the zsh helpers turn `exit`, `logout`, and Ctrl+D at an empty prompt into `detach-client`. Ctrl+D with text in the edit buffer keeps its normal delete/list behavior. `prefix + d` and closing the SonicTerm tab also disconnect the client while leaving panes running. Run `rr main` later to reconnect.
 
-Use `rd <name>` for intentional session deletion. Persistence is still in memory only: `rd`, `kill-server`, daemon loss, or reboot destroys the session; there is no resurrect-style disk restore.
+Use `rd <name>` for intentional session deletion. Closing SonicTerm does not require `rs`: detached sessions remain in the running daemon. PID 1 is the expected parent for newly bootstrapped servers, not a guarantee against crashes or system shutdown.
+
+### Upgrade and restart
+
+```sh
+brew upgrade rmux
+rs
+```
+
+Upgrade the package whenever needed; run `rs` only when ready to stop running programs. The current Homebrew formula has no service or restart hook. The installer retains matching client/daemon binaries outside Homebrew cleanup. Managed zsh helpers and the `rmux` shell function keep using the active pair until restart. Absolute Homebrew executable paths and explicit separate sockets bypass that protection.
+
+`rs` has no parameters. It saves **all sessions, including detached sessions**, validates the snapshot, and asks for confirmation. Only then does an independent worker restart with the installed version and restore the workspace. A failed save or cancellation leaves the daemon alone. The worker is separate from the invoking pane, so restarting that pane cannot interrupt restoration.
+
+Restore recreates session/window names, pane layouts, working directories, and active selections as fresh shells. It does not recover running programs, unsaved buffers, scrollback, or process memory, and never replays captured commands. Snapshot and runtime files stay private under `~/.local/state/rmux-store/` and `~/.local/share/rmux-store/`; do not commit them. Failures retain the snapshot instead of overwriting it with partial state.
+
+There is no LaunchAgent, periodic save, or automatic reboot restoration. A crash or reboot can lose changes since the last `rs` save. `rh` shows only helper usage, the parent-PID behavior, upgrade steps, and restart warnings.
 
 ### Keybindings
 
@@ -86,12 +105,14 @@ The [complete RMUX keymap](RMUX-Keymap.md) lists all 278 effective bindings acro
 | Action | Binding |
 |---|---|
 | Reload config | `prefix + r` |
+| Rename current window (tab) | `prefix + n` |
 | Toggle mouse/native selection | `prefix + T` |
 | New window in current directory | `prefix + c` |
 | Split right in current directory | `prefix + \|` |
 | Split down in current directory | `prefix + -` |
 | Focus pane | `prefix + h/j/k/l` |
 | Resize pane, repeatable | `prefix + H/J/K/L` |
+| Previous / next window (tab), repeatable | `prefix + Left/Right` |
 | Last window | `prefix + Tab` |
 | Copy mode | `prefix + v` |
 | Start/select line/rectangle | `v` / `V` / `C-v` in copy mode |
@@ -107,6 +128,7 @@ SonicTerm's Copilot guide requires RMUX's conditional root mouse bindings. The t
 
 ```tmux
 set -g mouse on
+bind -n MouseDown1Status select-window -t =
 bind -n MouseDown1Pane { select-pane -t=; send -M }
 bind -n MouseDrag1Pane { if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' { send -M } { copy-mode -M } }
 bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-no-clear
@@ -114,6 +136,8 @@ set -s set-clipboard on
 ```
 
 `MouseDown1Pane` selects the pane and forwards the press. `MouseDrag1Pane` forwards input when RMUX is already in a pane mode or the nested application requested mouse input; otherwise RMUX starts copy mode. Releasing the mouse copies RMUX-owned selections without clearing the highlight or leaving copy mode; press `q` to leave copy mode. This lets Copilot own transcript selection and edge scrolling. Do not force every drag into RMUX copy mode. Shift-drag remains the SonicTerm-local selection fallback.
+
+Left-clicking a window tab uses `select-window -t =`. RMUX 0.10.0's default `switch-client -t =` can re-interpret internal pane `0` against `pane-base-index 1`, causing errors such as `invalid target 'leetcode:2.0'`. Selecting the window directly avoids that bug without changing pane numbering or tab styles.
 
 ## Clipboard trust
 
@@ -130,7 +154,7 @@ Use normal `claude` or the repository's `cc` helper for an ordinary Claude Code 
 
 ```sh
 rmux claude --permission-mode bypassPermissions \
-  --model 'claude-sonnet-5[1m]' --effort medium
+  --model 'claude-sonnet-5[1m]' --effort high
 ```
 
 `rmux claude` enables Claude Code's tmux teammate mode and prepends a private, process-scoped `tmux` shim so Claude's teammate commands target RMUX. It does not replace the global `tmux` executable. This repository deliberately does not run `rmux setup tmux-shim`.

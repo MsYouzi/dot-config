@@ -52,14 +52,16 @@ RMUX 使用 tmux 命令语法，不是 JSON、YAML 或 TOML。配置可以执行
 | 历史 | 100000 行 |
 | 窗口/窗格编号 | 从 1 开始；关闭窗口后自动重排 |
 | 复制模式 | Vi 按键；`pbcopy` 加 OSC 52 |
-| 状态栏 | 顶部、由固定的 Apollo RMUX release 设定样式 |
+| 状态栏 | 底部单行，由固定的 Apollo RMUX release 设定样式 |
 | 标题 | 禁用自动重命名；向外传播 `#S · #W` |
 | 终端身份 | `TERM=tmux-256color`；保留 `TERM_PROGRAM=rmux` |
 | 工作目录 | 把活动 pane 的 OSC 7 报告转发给 SonicTerm |
 
 配置会清除守护进程可能继承的陈旧 `TERMINFO`、`TERMINFO_DIRS` 和 `TERMCAP`，然后设置 `COLORTERM=truecolor` 与 `FORCE_COLOR=3`。它不会清除 RMUX 自己的 `TERM_PROGRAM` 身份。
 
-`install.sh` 会验证官方 `rmux-apollo-theme` release，并把仅含主题的配置链接到 `~/.config/rmux-apollo-theme/`。本机 RMUX 文件会 source 它，用于 status、window、pane、message 和 copy-mode 样式。本机状态字符串只保留内容，不会覆盖上游颜色。不会添加 plugin manager 或 shell bootstrap。
+`install.sh` 会验证官方 `rmux-apollo-theme` release，并把仅含主题的配置链接到 `~/.config/rmux-apollo-theme/`。本机 RMUX 文件会 source 它，用于 status、window、pane、message 和 copy-mode 样式。状态栏与本机 bufferline.nvim 配置保持一致：斜边分隔符、深蓝底加粗白字的活动标签，以及与状态栏背景一致的非活动标签。只有活动标签的颜色使用固定的 bufferline 专用覆盖值，其余颜色均来自 Apollo。不会添加 plugin manager 或 shell bootstrap。
+
+底部状态栏左侧显示红色斜边会话标签和带编号的斜边窗口标签，右侧只显示 `HH:MM` 时钟。会话标签与窗口标签之间、各窗口标签之间均留一个字符的间距。会话名称最多占 19 个显示单元，确保两端斜边可完整放入 24 单元的标签宽度内。活动提醒和响铃颜色仍然可见。Prefix 生效时显示 `PREFIX`，窗口缩放时显示 `ZOOM`。斜边使用与 bufferline 的 `slope` 样式相同的 Powerline 字形（`U+E0BA` 和 `U+E0BC`），终端字体或后备字体须支持它们。不显示完整日期或装饰性时钟图标。
 
 外层 `xterm-256color` 能力包含 `osc7`，并且已启用 `set-titles`。Oh My Zsh 的 `omz_termsupport_cwd` hook 会在每次显示提示符时发出带主机名的 OSC 7 报告。RMUX 按 pane 记录该报告，并把活动 pane 的路径转发给 SonicTerm，因此相对文件路径会按正确目录解析。`#{pane_current_path}` 是进程 metadata，不能代替 shell 报告。修改 `terminal-features` 后，请重载配置并 detach/reattach，让客户端重新解析能力。
 
@@ -71,13 +73,30 @@ RMUX 使用 tmux 命令语法，不是 JSON、YAML 或 TOML。配置可以执行
 rr main       # 创建或恢复 main
 rl            # 列出所有会话
 rd main       # 删除 main
+rs            # 保存全部会话，确认后重启并恢复
+rh            # 助手帮助、父 PID 和升级步骤
 ```
 
-`rr <名称>` 会先检查会话是否存在：存在时执行 `attach-session`，只有不存在时才执行 `new-session`，并打印所选择的路径。`rd <名称>` 执行 `kill-session`，因此会永久结束该会话。SonicTerm 使用真实的 `TERM_PROGRAM=SonicTerm`；只有 Copilot 子进程会收到 WezTerm 兼容身份。
+`rr <名称>` 按完整名称连接已有会话，只在不存在时创建。新服务器通过短暂运行后退出的启动客户端创建；连接前，`rr` 会验证守护进程的**父 PID 为 1**。终端仍拥有连接客户端，但不拥有守护进程。已有服务器会直接复用，不会重启或强制更换父进程。`rd <名称>` 永久结束该会话。SonicTerm 使用真实的 `TERM_PROGRAM=SonicTerm`；只有 Copilot 子进程会收到 WezTerm 兼容身份。
 
 在 RMUX 中，zsh 助手会把 `exit`、`logout` 以及空提示符上的 Ctrl+D 转换为 `detach-client`。编辑缓冲区中有文字时，Ctrl+D 仍保持正常的删除 / 列表行为。`prefix + d` 和关闭 SonicTerm 标签页也只会断开客户端，窗格会继续运行。之后执行 `rr main` 即可重新连接。
 
-需要主动删除会话时使用 `rd <名称>`。持久性仍然只存在于内存中：执行 `rd` 或 `kill-server`、守护进程丢失或系统重启都会销毁会话；没有类似 resurrect 的磁盘恢复。
+需要主动删除会话时使用 `rd <名称>`。关闭 SonicTerm 前不需要运行 `rs`：分离的会话会继续在守护进程中运行。父 PID 为 1 是新启动服务器的预期状态，并不能防止崩溃或系统关机。
+
+### 升级与重启
+
+```sh
+brew upgrade rmux
+rs
+```
+
+需要时升级安装包；准备好结束运行中的程序后，再执行 `rs`。当前 Homebrew formula 没有服务或重启 hook。安装器会把配套的客户端和守护进程二进制保存在 Homebrew 清理范围之外。受管 zsh 助手和 `rmux` shell 函数在重启前继续使用活动版本。直接调用 Homebrew 可执行文件的绝对路径或显式选择独立 socket，不受此保护。
+
+`rs` 不接受参数。它会保存**全部会话，包括已分离的会话**，验证快照并请求确认。确认后，独立工作进程使用已安装版本重启并恢复工作区。保存失败或取消不会停止守护进程。工作进程独立于调用它的窗格，因此该窗格重启不会中断恢复。
+
+恢复会以新 shell 重建会话和窗口名称、窗格布局、工作目录及活动选择。它不会恢复运行中的程序、未保存缓冲区、滚动历史或进程内存，也不会重放捕获的命令。快照和运行时文件私密保存在 `~/.local/state/rmux-store/` 和 `~/.local/share/rmux-store/`，不得提交。失败时保留原快照，不用部分恢复状态覆盖它。
+
+没有 LaunchAgent、定时保存或系统重启后的自动恢复。崩溃或系统重启可能丢失上次 `rs` 保存之后的变化。`rh` 只显示助手用法、父 PID 行为、升级步骤和重启警告。
 
 ### 快捷键
 
@@ -86,12 +105,14 @@ rd main       # 删除 main
 | 操作 | 快捷键 |
 |---|---|
 | 重载配置 | `prefix + r` |
+| 重命名当前窗口（标签） | `prefix + n` |
 | 切换鼠标/原生选择 | `prefix + T` |
 | 在当前目录新建窗口 | `prefix + c` |
 | 在当前目录向右分割 | `prefix + \|` |
 | 在当前目录向下分割 | `prefix + -` |
 | 移动焦点 | `prefix + h/j/k/l` |
 | 连续调整大小 | `prefix + H/J/K/L` |
+| 切换到前一个 / 后一个窗口（标签），可连续按 | `prefix + Left/Right` |
 | 返回上一个窗口 | `prefix + Tab` |
 | 进入复制模式 | `prefix + v` |
 | 开始选择/整行/矩形 | 复制模式中的 `v` / `V` / `C-v` |
@@ -107,6 +128,7 @@ SonicTerm 的 Copilot 指南要求保留 RMUX 的条件式 root mouse bindings�
 
 ```tmux
 set -g mouse on
+bind -n MouseDown1Status select-window -t =
 bind -n MouseDown1Pane { select-pane -t=; send -M }
 bind -n MouseDrag1Pane { if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' { send -M } { copy-mode -M } }
 bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-no-clear
@@ -114,6 +136,8 @@ set -s set-clipboard on
 ```
 
 `MouseDown1Pane` 会选择 pane 并转发按下事件。`MouseDrag1Pane` 会在 RMUX 已处于 pane mode 或内层应用请求鼠标输入时转发事件；否则 RMUX 会进入 copy mode。释放鼠标时，RMUX 管理的选择会完成复制，但不会清除高亮或退出 copy mode；按 `q` 可退出 copy mode。这样 Copilot 可以自己处理会话选择与边缘滚动。不要把所有拖动强制送入 RMUX copy mode；Shift-drag 仍可作为 SonicTerm 本地选择的后备方式。
+
+左键点击窗口标签使用 `select-window -t =`。RMUX 0.10.0 默认的 `switch-client -t =` 可能按 `pane-base-index 1` 再次解析内部窗格编号 `0`，导致 `invalid target 'leetcode:2.0'` 等错误。直接选择窗口可以避开该问题，无需更改窗格编号或标签样式。
 
 ## 剪贴板信任边界
 
@@ -130,7 +154,7 @@ set -s set-clipboard on
 
 ```sh
 rmux claude --permission-mode bypassPermissions \
-  --model 'claude-sonnet-5[1m]' --effort medium
+  --model 'claude-sonnet-5[1m]' --effort high
 ```
 
 `rmux claude` 会启用 Claude Code 的 tmux teammate mode，并在 Claude 进程的 `PATH` 前加入私有、进程级的 `tmux` shim，使 teammate 命令指向 RMUX。它不会替换系统全局的 `tmux`。本仓库不会运行 `rmux setup tmux-shim`。

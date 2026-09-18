@@ -25,10 +25,12 @@ The tracked config uses:
 |---|---|
 | Theme | `apollo`, from the pinned upstream release |
 | Keymap | `sonicterm-macos` |
-| Font | Rec Mono St.Helens, size 14 |
+| Font | Rec Mono St.Helens, size 13 |
+| Font weight scale | 1 |
 | Line height | 1.2 |
 | New window grid | 100 × 30 |
 | Scrollback | 1000 lines |
+| Keypad mode | `numeric`: ordinary digits, operators, and Enter in legacy input; Kitty protocol unchanged |
 | Cursor | block, no blink |
 | Backdrop | opaque |
 | Software render mode | auto |
@@ -88,6 +90,12 @@ The proxy address is `127.0.0.1:46971`. The helpers update shell, Git, and npm p
 
 `copilot` and `gg` add `--yolo` automatically, allowing tools, paths, and URLs without approval prompts. No default flags need to be appended. The `copilot` alias keeps argument forwarding and successful-update cleanup; see [Copilot CLI](Copilot-CLI.md) for permission defaults and reloading existing shells.
 
+## Homebrew updates
+
+`custom.zsh` exports `HOMEBREW_NO_AUTO_UPDATE=1`. Commands such as `brew install` and `brew upgrade` skip the automatic catalog update and its announcements. Run `brew update` manually before upgrading when you want the latest package versions.
+
+Open a new shell to apply it, or run `export HOMEBREW_NO_AUTO_UPDATE=1` in an existing shell.
+
 ## Completions and paths
 
 `.zshrc` owns prompt theme selection through `ZSH_THEME`. Managed zsh helpers do not set or override it, and the installer does not edit `.zshrc`. Apollo remains available if selected there. `custom.zsh` points eza at the pinned upstream theme.
@@ -102,9 +110,11 @@ When fast-syntax-highlighting is installed, the installer prepares its shipped B
 rr main       # attach if main exists; create only when absent
 rl            # list sessions
 rd main       # delete main
+rs            # save all sessions, confirm restart, restore
+rh            # helpers, parent PID 1, upgrade steps
 ```
 
-It never auto-attaches a new tab.
+It never auto-attaches a new tab. New servers started by `rr` must have parent PID 1 before attachment; the terminal owns only the attached client. Existing servers remain untouched. Upgrade with `brew upgrade rmux`, then run `rs` when ready to restart all sessions as fresh shells. The managed `rmux` shell function retains the client version compatible with the running server. See [RMUX](RMUX.md) for snapshot limits.
 
 Inside RMUX:
 

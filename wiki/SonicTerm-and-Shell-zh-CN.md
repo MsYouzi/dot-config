@@ -25,10 +25,12 @@ config/sonicterm/keymaps/*.toml
 |---|---|
 | 主题 | `apollo`，来自固定的上游 release |
 | Keymap | `sonicterm-macos` |
-| 字体 | Rec Mono St.Helens，大小 14 |
+| 字体 | Rec Mono St.Helens，大小 13 |
+| 字重缩放 | 1 |
 | 行高 | 1.2 |
 | 新窗口网格 | 100 × 30 |
 | Scrollback | 1000 行 |
+| 数字键盘模式 | `numeric`：传统输入使用普通数字、运算符和回车；Kitty 协议保持不变 |
 | 光标 | block，不闪烁 |
 | 背景 | opaque |
 | 软件渲染模式 | auto |
@@ -88,6 +90,12 @@ Proxy 地址是 `127.0.0.1:46971`。助手会修改 shell、Git 和 npm proxy �
 
 `copilot` 和 `gg` 会自动添加 `--yolo`，允许工具、路径和 URL，不再请求批准。不需要手动附加默认 flags。`copilot` alias 保留参数转发和成功更新后的清理；权限默认值与现有 shell 的重新加载方法见 [Copilot CLI](Copilot-CLI-zh-CN.md)。
 
+## Homebrew 更新
+
+`custom.zsh` 导出 `HOMEBREW_NO_AUTO_UPDATE=1`。`brew install` 和 `brew upgrade` 等命令会跳过自动更新软件包目录及其提示。需要最新软件包版本时，请先手动运行 `brew update`，再升级。
+
+打开新 shell 即可生效，也可以在现有 shell 中运行 `export HOMEBREW_NO_AUTO_UPDATE=1`。
+
 ## 补全与路径
 
 提示符主题由 `.zshrc` 中的 `ZSH_THEME` 选择。受管 zsh 助手不会设置或覆盖它，安装器也不会修改 `.zshrc`。需要时仍可在该文件中选择 Apollo。`custom.zsh` 会让 eza 使用固定的上游主题。
@@ -102,9 +110,11 @@ Proxy 地址是 `127.0.0.1:46971`。助手会修改 shell、Git 和 npm proxy �
 rr main       # main 存在时连接；只有不存在时才创建
 rl            # 列出会话
 rd main       # 删除 main
+rs            # 保存全部会话，确认重启后恢复
+rh            # 助手、父 PID 1、升级步骤
 ```
 
-它永远不会自动连接新标签页。
+它永远不会自动连接新标签页。`rr` 新启动的服务器必须在连接前具有父 PID 1；终端只拥有连接客户端。已有服务器保持不变。用 `brew upgrade rmux` 升级，准备好以新 shell 重建全部会话时再执行 `rs`。受管 `rmux` shell 函数会保留与当前服务器兼容的客户端版本。快照限制请看 [RMUX](RMUX-zh-CN.md)。
 
 在 RMUX 中：
 

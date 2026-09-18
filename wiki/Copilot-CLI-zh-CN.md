@@ -11,7 +11,7 @@ Copilot CLI 文件在 `config/copilot/`。它们安装到 `~/.copilot/`。
 ```text
 model:       gpt-6-astra
 context:     long_context
-effort:      medium
+effort:      high
 permissions: allow-all
 theme:       default（终端 Base-16）
 keep alive:  busy
@@ -35,6 +35,8 @@ Copilot 可能在运行时添加或删除 `staff` 字段。不要把它留在受
 文件保留可复用行为和指向 `~/Public/dot-configs` 的条件指针。修改这些受管设置前，先读该目录的 `.github/copilot-instructions.md`。仓库专属规则留在那里，不会在无关项目中加载。
 
 不再需要重复的全局 `AGENTS.md` 或 shell 注入的指令目录。用户自行设置的 `COPILOT_CUSTOM_INSTRUCTIONS_DIRS` 值保持不变。
+
+PR 合并后，全局规则要求先完成本机清理，再宣布任务完成：确认合并，移除该 PR 干净且闲置的 worktree 和本地分支，清理失效引用，移除任务创建的临时文件，并停止不再需要的任务专属进程。保留未提交或未合并的工作、stash、活跃会话和锁、无关文件及共享进程。检查最终状态，并说明保留项。这是 agent 指令，不是无人值守的合并 hook。
 
 ## GitHub 访问
 
@@ -63,7 +65,7 @@ gg my-project    # 带标题、不限制工具、路径和 URL 的 Copilot sessi
 
 受管 `copilot` alias 会调用 helper，自动添加 `--yolo`，并原样转发你的参数。`gg` 也会传入 `--yolo`。它等同于 `--allow-all`，也就是 `--allow-all-tools --allow-all-paths --allow-all-urls`：工具、路径和 URL 都不会请求允许。不需要手动输入默认 flags。明确的拒绝规则和组织策略仍然有效。
 
-`settings.json` 也设置了 `defaultPermissionMode: "allow-all"`，用于不经过 alias 启动的新交互会话。Alias 还覆盖恢复会话和 `-p` 调用。这只改变权限，不会启用 autopilot。GPT-6 Astra、长 context 和 medium effort 为默认值；`gg` 也会在启动时固定这些设置。
+`settings.json` 也设置了 `defaultPermissionMode: "allow-all"`，用于不经过 alias 启动的新交互会话。Alias 还覆盖恢复会话和 `-p` 调用。这只改变权限，不会启用 autopilot。GPT-6 Astra、长 context 和 high effort 为默认值；`gg` 也会在启动时固定这些设置。`high` 是与 [Claude Code](Claude-Code-zh-CN.md) 一致的默认推理强度，不是模型名称。单次覆盖请用 `copilot --effort <level>`；`gg` 的参数是标题，不是 CLI flags。
 
 安装后打开新 shell，或在当前 shell 中重新加载两个启动器：
 

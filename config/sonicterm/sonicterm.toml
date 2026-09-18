@@ -6,9 +6,9 @@ tab_max_width = 240
 
 [font]
 family = "Rec Mono St.Helens"
-size = 14
-line_height = 1.2
-weight_scale = 1.25
+size = 13.5
+line_height = 1.1
+weight_scale = 1
 
 [window]
 cols = 100
@@ -23,6 +23,7 @@ warm_window_pool = 2
 [terminal]
 # Only Copilot children receive the WezTerm compatibility identity.
 term_program = "SonicTerm"
+keypad_mode = "numeric"
 scrollback = 1000
 cursor_blink = false
 cursor_shape = "block"

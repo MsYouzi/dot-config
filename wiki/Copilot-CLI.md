@@ -11,7 +11,7 @@ Copilot CLI files live under `config/copilot/`. They install under `~/.copilot/`
 ```text
 model:       gpt-6-astra
 context:     long_context
-effort:      medium
+effort:      high
 permissions: allow-all
 theme:       default (terminal Base-16)
 keep alive:  busy
@@ -35,6 +35,8 @@ It makes conversational prose direct and concise by default. Requests for more d
 The file holds reusable behavior and a conditional pointer to `~/Public/dot-configs`. Changes to these managed settings start by reading that folder's `.github/copilot-instructions.md`. Repo-only rules stay there, so unrelated projects do not load them.
 
 No duplicate global `AGENTS.md` or shell-injected instruction directory is needed. Any user-supplied `COPILOT_CUSTOM_INSTRUCTIONS_DIRS` value stays untouched.
+
+After a PR merges, the global rules require local cleanup before the task is called complete: confirm the merge, remove clean inactive PR worktrees and local branches, prune stale references, remove task-created temporary files, and stop unneeded task-owned processes. Preserve uncommitted or unmerged work, stashes, active sessions and locks, unrelated files, and shared processes. Verify the final state and report anything kept. This is an agent instruction, not an unattended merge hook.
 
 ## GitHub access
 
@@ -63,7 +65,7 @@ gg my-project    # titled, unrestricted Copilot session
 
 The managed `copilot` alias calls a helper that adds `--yolo` and forwards your arguments unchanged. `gg` also passes `--yolo`. This is identical to `--allow-all`, or `--allow-all-tools --allow-all-paths --allow-all-urls`: tools, paths, and URLs do not ask for approval. No default flags need to be typed. Explicit deny rules and organization policy still apply.
 
-`settings.json` also sets `defaultPermissionMode: "allow-all"` for new interactive sessions launched without the alias. The alias covers resumed sessions and `-p` runs too. This changes permissions, not autopilot mode. GPT-6 Astra, long context, and medium effort are the defaults; `gg` also pins them at launch.
+`settings.json` also sets `defaultPermissionMode: "allow-all"` for new interactive sessions launched without the alias. The alias covers resumed sessions and `-p` runs too. This changes permissions, not autopilot mode. GPT-6 Astra, long context, and high effort are the defaults; `gg` also pins them at launch. `high` is the shared reasoning-effort default with [Claude Code](Claude-Code.md), not a model name. For a one-off override, use `copilot --effort <level>`; `gg` arguments are a title, not CLI flags.
 
 Open a new shell after installation, or reload both launchers in the current shell:
 
