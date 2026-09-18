@@ -6,9 +6,9 @@
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-5[1m]",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5-20251001",
     "ANTHROPIC_SMALL_FAST_MODEL": "claude-haiku-4-5-20251001",
-    "MODEL_REASONING_EFFORT": "high",
+    "MODEL_REASONING_EFFORT": "max",
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "100",
-    "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS": "16"
+    "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS": "20"
   },
   "permissions": {
     "allow": [],
@@ -39,12 +39,70 @@
   "feedbackDrafts": "off",
   "modelSettings": {
     "claude-sonnet-5": {
-      "effortLevel": "high"
+      "effortLevel": "max"
     }
   },
   "autoCompactWindow": 770000,
   "skipDangerousModePermissionPrompt": true,
   "theme": "custom:apollo",
   "autoCompactEnabled": true,
-  "skipAutoPermissionPrompt": true
+  "skipAutoPermissionPrompt": true,
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/session-cleanup.sh session-start",
+            "timeout": 10,
+            "statusMessage": "Preparing isolated session storage"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "mcp_tool",
+            "server": "playwright",
+            "tool": "browser_close",
+            "input": {},
+            "timeout": 15,
+            "statusMessage": "Closing Playwright"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.claude/session-cleanup.sh turn",
+            "timeout": 15,
+            "statusMessage": "Cleaning temporary files"
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/session-cleanup.sh turn",
+            "timeout": 15,
+            "statusMessage": "Cleaning temporary files after failure"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/session-cleanup.sh session-end",
+            "timeout": 15,
+            "statusMessage": "Removing isolated session storage"
+          }
+        ]
+      }
+    ]
+  }
 }

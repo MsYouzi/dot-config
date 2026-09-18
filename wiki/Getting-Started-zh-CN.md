@@ -7,14 +7,14 @@
 ## 安装
 
 ```sh
-git clone git@github.com:D0n9X1n/dot-config.git ~/Public/dot-configs
+git clone git@github.com:MsYouzi/dot-config.git ~/Public/dot-configs
 cd ~/Public/dot-configs
 ./install.sh
 ```
 
-脚本可以安装 Homebrew、RMUX、Claude Code、Copilot CLI、copilot-relay、shell 工具、字体和 oh-my-zsh。它会下载并验证固定的 Apollo theme releases，构建本机 adapters，然后链接 `config/manifest.tsv` 中列出的文件。
+脚本可以安装 Homebrew、RMUX、WezTerm、Claude Code、Copilot CLI、copilot-relay、shell 工具、字体和 oh-my-zsh。它会下载并验证固定的主题输入，应用本 fork 的 Catppuccin adapters，然后链接 `config/manifest.tsv` 中列出的文件。若 tmux 已安装，也会安装 legacy tmux 配置。
 
-第一次 Apollo 安装需要网络。以后可以复用 `~/.local/share/dot-configs/apollo/` 下已验证的本机 bundle。
+第一次主题 bundle 安装需要网络。以后可以复用 `~/.local/share/dot-configs/apollo/` 下已验证的本机 bundle。
 
 完整日志在这里：
 

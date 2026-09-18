@@ -5,7 +5,7 @@
 [![Platform](https://img.shields.io/badge/platform-macOS-1d2021?logo=apple&logoColor=ebdbb2)](#)
 [![License](https://img.shields.io/github/license/D0n9X1n/dot-config?color=b8bb26)](./LICENSE)
 
-My macOS config for RMUX, SonicTerm, zsh, Claude Code, and GitHub Copilot CLI.
+My macOS config for RMUX, SonicTerm, zsh, Claude Code, and GitHub Copilot CLI. This fork keeps a Catppuccin Mocha palette, GPT-6 routing at max effort, deterministic Claude/Playwright cleanup, and legacy tmux/WezTerm compatibility.
 
 ## Folders
 
@@ -15,12 +15,12 @@ scripts/  code and release pins
 wiki/     full help
 ```
 
-`install.sh` links tracked files from `config/manifest.tsv` and installs verified Apollo runtime assets.
+`install.sh` links tracked files from `config/manifest.tsv`, installs verified theme runtime assets, and keeps the fork's Catppuccin palette across upstream merges.
 
 ## Install
 
 ```sh
-git clone git@github.com:D0n9X1n/dot-config.git ~/Public/dot-configs
+git clone git@github.com:MsYouzi/dot-config.git ~/Public/dot-configs
 cd ~/Public/dot-configs
 ./install.sh
 npx copilot-relay auth
@@ -53,7 +53,7 @@ scripts/check.sh all
 
 ## Full help
 
-Read the [GitHub Wiki](https://github.com/D0n9X1n/dot-config/wiki).
+Read the [GitHub Wiki](https://github.com/MsYouzi/dot-config/wiki).
 
 The reviewable source is in `wiki/`. It has English and Simplified Chinese pages.
 

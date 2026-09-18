@@ -1,14 +1,12 @@
 {
-  "_comment": "Synced MCP servers — secret-free entries only. install.sh merges this into ~/.config/github-copilot/mcp.json on install (shared wins on key collision); the existing pipeline then imports the merged set into ~/.claude.json so Claude Code sees it too. Per-machine secret-bearing entries (PATs, API keys) live ONLY in the gitignored ~/.config/github-copilot/mcp.json and are preserved by the merge.",
+  "_comment": "Synced MCP servers \u2014 secret-free entries only. install.sh merges this into ~/.config/github-copilot/mcp.json on install (shared wins on key collision); the existing pipeline then imports the merged set into ~/.claude.json so Claude Code sees it too. Per-machine secret-bearing entries (PATs, API keys) live ONLY in the gitignored ~/.config/github-copilot/mcp.json and are preserved by the merge.",
   "mcpServers": {
     "playwright": {
       "type": "stdio",
-      "command": "npx",
+      "command": "/bin/bash",
       "args": [
-        "--yes",
-        "@playwright/mcp@latest",
-        "--browser",
-        "chromium"
+        "-c",
+        "exec \"$HOME/.claude/playwright-mcp.sh\""
       ]
     }
   }

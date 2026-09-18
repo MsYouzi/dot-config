@@ -1,0 +1,42 @@
+# Fork-owned SonicTerm adapter; scripts/catppuccin-theme.sh copies it into the runtime bundle.
+# Edit colors here and keep shared roles aligned with scripts/theme/catppuccin-mocha.json.
+name = "Catppuccin Mocha"
+appearance = "dark"
+
+[colors]
+background = "#11111b"
+foreground = "#cdd6f4"
+cursor = "#f5e0dc"
+cursor_text = "#11111b"
+selection_bg = "#585b70"
+selection_fg = "#cdd6f4"
+
+[colors.ansi]
+black = "#45475a"
+red = "#f38ba8"
+green = "#a6e3a1"
+yellow = "#f9e2af"
+blue = "#89b4fa"
+magenta = "#f5c2e7"
+cyan = "#94e2d5"
+white = "#bac2de"
+
+[colors.bright]
+black = "#585b70"
+red = "#f38ba8"
+green = "#a6e3a1"
+yellow = "#f9e2af"
+blue = "#89b4fa"
+magenta = "#f5c2e7"
+cyan = "#94e2d5"
+white = "#a6adc8"
+
+[colors.tab]
+bar_bg = "#11111b"
+active_bg = "#11111b"
+active_fg = "#f9e2af"
+inactive_bg = "#11111b"
+inactive_fg = "#6c7086"
+hover_bg = "#181825"
+hover_fg = "#bac2de"
+close_button_fg = "#f38ba8"

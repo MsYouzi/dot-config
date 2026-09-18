@@ -115,9 +115,15 @@ JSON
   echo "copilot subagent statusline ok"
 }
 
+run_claude_cleanup_smoke() {
+  scripts/test-claude-cleanup.sh
+  node scripts/test-playwright-proxy.js
+  echo "Claude cleanup lifecycle and Playwright proxy ok"
+}
+
 run_claude_subagent_limit_smoke() {
   jq -e '
-    .env.CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS == "16" and
+    .env.CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS == "20" and
     ((.hooks // {}) | tostring | contains("subagent-counter.sh") | not)
   ' config/claude/settings.json >/dev/null
   [ ! -e config/claude/hooks/subagent-counter.sh ]
@@ -176,7 +182,7 @@ SH
     [ -L "$test_home/.claude/hooks/subagent-counter.sh" ]
     [ -f "$test_home/.claude/hooks/user-hook.sh" ]
   )
-  echo "claude native subagent limit config ok: 16 (requires v2.1.217+)"
+  echo "claude native subagent limit config ok: 20 (requires v2.1.217+)"
 }
 
 run_model_default_smoke() {
@@ -184,15 +190,15 @@ run_model_default_smoke() {
     .env.ANTHROPIC_MODEL == "claude-sonnet-5[1m]" and
     .model == "sonnet" and
     (has("effortLevel") | not) and
-    .env.MODEL_REASONING_EFFORT == "high" and
-    .modelSettings["claude-sonnet-5"].effortLevel == "high" and
+    .env.MODEL_REASONING_EFFORT == "max" and
+    .modelSettings["claude-sonnet-5"].effortLevel == "max" and
     .env.ANTHROPIC_DEFAULT_SONNET_MODEL == "claude-sonnet-5[1m]" and
     (.env | has("ANTHROPIC_DEFAULT_SONNET_MODEL_NAME") | not) and
     (.env | has("ANTHROPIC_DEFAULT_SONNET_MODEL_DESCRIPTION") | not) and
     .env.ANTHROPIC_DEFAULT_HAIKU_MODEL == "claude-haiku-4-5-20251001" and
     .env.ANTHROPIC_SMALL_FAST_MODEL == "claude-haiku-4-5-20251001" and
     .env.ANTHROPIC_BASE_URL == "http://127.0.0.1:4142" and
-    .env.CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS == "16" and
+    .env.CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS == "20" and
     .autoCompactEnabled == true and
     .autoCompactWindow == 770000 and
     .env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE == "100" and
@@ -218,17 +224,17 @@ run_model_default_smoke() {
     return 1
   fi
 
-  # Copilot CLI: GPT-6 Astra at the 1M context tier and high effort.
+  # Copilot CLI: GPT-6 Astra at the 1M context tier and max effort.
   jq -e '
     .model == "gpt-6-astra" and
     .contextTier == "long_context" and
-    .effortLevel == "high"
+    .effortLevel == "max"
   ' config/copilot/settings.json >/dev/null
 
   # Relay: Opus remains separate; every non-Opus route uses GPT-6 Astra.
   grep -Eq '^opusModel:[[:space:]]*claude-opus-5$' config/copilot-relay/config.yaml
   grep -Eq '^gptModel:[[:space:]]*gpt-6-astra$' config/copilot-relay/config.yaml
-  grep -Eq '^thinkEffort:[[:space:]]*medium$' config/copilot-relay/config.yaml
+  grep -Eq '^thinkEffort:[[:space:]]*max$' config/copilot-relay/config.yaml
   grep -Eq '^upstreamTimeoutSeconds:[[:space:]]*600$' config/copilot-relay/config.yaml
 
   grep -Fq $'link\tconfig/copilot-relay/config.yaml\t.copilot-relay/config.yaml' config/manifest.tsv
@@ -236,8 +242,8 @@ run_model_default_smoke() {
   # Launcher wrappers inject the same defaults (settings.json can be rewritten
   # at runtime, so the flags are the authoritative per-launch pin).
   grep -Fq -- "--model 'claude-sonnet-5[1m]'" config/zsh/claude.zsh
-  grep -Fq -- "--model 'claude-sonnet-5[1m]' --effort high" config/zsh/cc.zsh
-  grep -Fq -- "--model gpt-6-astra --context long_context --effort high" config/zsh/gg.zsh
+  grep -Fq -- "--model 'claude-sonnet-5[1m]' --effort max" config/zsh/cc.zsh
+  grep -Fq -- "--model gpt-6-astra --context long_context --effort max" config/zsh/gg.zsh
   if grep -Fq 'gpt-6-astra' config/zsh/claude.zsh config/zsh/cc.zsh; then
     echo "Claude launchers must not pin a GPT model id" >&2
     return 1
@@ -256,8 +262,15 @@ run_model_default_smoke() {
 printf '%s\n' "$*" >>"$CLAUDE_CAPTURE"
 SH
     chmod +x "$fake_bin/claude"
+    mkdir -p "$test_root/home/.claude"
+    cat >"$test_root/home/.claude/session-cleanup.sh" <<'SH'
+#!/usr/bin/env bash
+shift
+exec "$@"
+SH
+    chmod +x "$test_root/home/.claude/session-cleanup.sh"
 
-    PATH="$fake_bin:$PATH" CLAUDE_CAPTURE="$capture" \
+    HOME="$test_root/home" PATH="$fake_bin:$PATH" CLAUDE_CAPTURE="$capture" \
       zsh -c 'source config/zsh/claude.zsh; claude'
     args="$(sed -n '1p' "$capture")"
     case "$args" in
@@ -265,8 +278,8 @@ SH
       *) echo "claude wrapper default lost the native Sonnet pin: $args" >&2; exit 1 ;;
     esac
     case "$args" in
-      *'--effort high'*) : ;;
-      *) echo "claude wrapper default lost --effort high: $args" >&2; exit 1 ;;
+      *'--effort max'*) : ;;
+      *) echo "claude wrapper default lost --effort max: $args" >&2; exit 1 ;;
     esac
     case "$args" in
       *'--permission-mode bypassPermissions'*) : ;;
@@ -274,7 +287,7 @@ SH
     esac
 
     : >"$capture"
-    PATH="$fake_bin:$PATH" CLAUDE_CAPTURE="$capture" \
+    HOME="$test_root/home" PATH="$fake_bin:$PATH" CLAUDE_CAPTURE="$capture" \
       zsh -c 'source config/zsh/claude.zsh; claude --model opus'
     args="$(sed -n '1p' "$capture")"
     case "$args" in
@@ -282,7 +295,7 @@ SH
     esac
 
     : >"$capture"
-    PATH="$fake_bin:$PATH" CLAUDE_CAPTURE="$capture" \
+    HOME="$test_root/home" PATH="$fake_bin:$PATH" CLAUDE_CAPTURE="$capture" \
       zsh -c 'source config/zsh/claude.zsh; claude --model=opus'
     args="$(sed -n '1p' "$capture")"
     case "$args" in
@@ -290,11 +303,11 @@ SH
     esac
 
     : >"$capture"
-    PATH="$fake_bin:$PATH" CLAUDE_CAPTURE="$capture" \
+    HOME="$test_root/home" PATH="$fake_bin:$PATH" CLAUDE_CAPTURE="$capture" \
       zsh -c 'source config/zsh/claude.zsh; claude --effort low'
     args="$(sed -n '1p' "$capture")"
     case "$args" in
-      *'--effort high'*) echo "explicit --effort was overridden: $args" >&2; exit 1 ;;
+      *'--effort max'*) echo "explicit --effort was overridden: $args" >&2; exit 1 ;;
     esac
     case "$args" in
       *'--effort low'*) : ;;
@@ -306,7 +319,7 @@ SH
     esac
 
     : >"$capture"
-    PATH="$fake_bin:$PATH" CLAUDE_CAPTURE="$capture" \
+    HOME="$test_root/home" PATH="$fake_bin:$PATH" CLAUDE_CAPTURE="$capture" \
       zsh -c 'source config/zsh/claude.zsh; claude --effort=high'
     args="$(sed -n '1p' "$capture")"
     if [ "$args" != "--permission-mode bypassPermissions --model claude-sonnet-5[1m] --effort=high" ]; then
@@ -315,16 +328,16 @@ SH
     fi
 
     : >"$capture"
-    PATH="$fake_bin:$PATH" CLAUDE_CAPTURE="$capture" \
+    HOME="$test_root/home" PATH="$fake_bin:$PATH" CLAUDE_CAPTURE="$capture" \
       zsh -c 'unset RMUX TMUX WEZTERM_PANE; source config/zsh/cc.zsh; cc model-smoke >/dev/null'
     args="$(sed -n '1p' "$capture")"
-    if [ "$args" != "--permission-mode bypassPermissions --model claude-sonnet-5[1m] --effort high" ]; then
-      echo "cc launcher lost the native model, high effort, or permission default: $args" >&2
+    if [ "$args" != "--permission-mode bypassPermissions --model claude-sonnet-5[1m] --effort max" ]; then
+      echo "cc launcher lost the native model, max effort, or permission default: $args" >&2
       exit 1
     fi
   )
 
-  echo "model defaults ok: native Sonnet/Haiku client ids, relay maps non-Opus to GPT-6 Astra"
+  echo "model defaults ok: native Sonnet/Haiku client ids, GPT-6 Astra route, max effort"
 }
 
 run_mcp_default_smoke() {
@@ -332,13 +345,15 @@ run_mcp_default_smoke() {
     (has("_github_template") | not) and
     (.mcpServers | has("github") | not) and
     .mcpServers.playwright.type == "stdio" and
-    .mcpServers.playwright.command == "npx"
+    .mcpServers.playwright.command == "/bin/bash" and
+    (.mcpServers.playwright.args | index("-c") != null) and
+    (.mcpServers.playwright.args | any(contains("playwright-mcp.sh")))
   ' config/mcp/mcp-shared.json >/dev/null
   if grep -Fq 'warn_claude_github_mcp_overrides' install.sh; then
     echo "installer still carries custom GitHub MCP setup" >&2
     return 1
   fi
-  echo "shared MCP defaults ok: Playwright retained, no duplicate GitHub setup"
+  echo "shared MCP defaults ok: isolated Playwright launcher, no duplicate GitHub setup"
 }
 
 run_copilot_terminal_smoke() {
@@ -415,7 +430,7 @@ diff -u <(printf '%s\n' 'rmux|outer-color|0' --version) "$COPILOT_CAPTURE"
 unset RMUX TMUX WEZTERM_PANE
 gg terminal-smoke >/dev/null
 diff -u <(printf '%s\n' 'WezTerm|truecolor|3' --yolo \
-  --model gpt-6-astra --context long_context --effort high) "$COPILOT_CAPTURE"
+  --model gpt-6-astra --context long_context --effort max) "$COPILOT_CAPTURE"
 [[ "$TERM_PROGRAM|$COLORTERM|$FORCE_COLOR" = 'rmux|outer-color|0' ]]
 [[ -z "${DISABLE_AUTO_TITLE:-}" ]]
 ZSH
@@ -744,13 +759,19 @@ run_manifest_smoke() {
       return 1
     fi
     duplicate_source="$(grep -Ev '^(#|$)' config/manifest.tsv | cut -f2 | sort | uniq -d | sed -n '1p')"
-    [ -z "$duplicate_source" ] || {
-      echo "duplicate manifest source: $duplicate_source" >&2
-      return 1
-    }
+    if [ -n "$duplicate_source" ]; then
+      while IFS= read -r file; do
+        case "$file" in
+          config/claude/skills/*/SKILL.md)
+            [ "$(grep -F $'\t'"$file"$'\t' config/manifest.tsv | wc -l | tr -d ' ')" = "2" ] || return 1
+            ;;
+          *) echo "unexpected duplicate manifest source: $file" >&2; return 1 ;;
+        esac
+      done < <(grep -Ev '^(#|$)' config/manifest.tsv | cut -f2 | sort | uniq -d)
+    fi
     config_files="$(find config -type f ! -path 'config/manifest.tsv' \
       ! -path 'config/sonicterm/*.save.lock' -print | sort)"
-    manifest_config_files="$(grep -Ev '^(#|$)' config/manifest.tsv | cut -f2 | grep '^config/' | sort)"
+    manifest_config_files="$(grep -Ev '^(#|$)' config/manifest.tsv | cut -f2 | grep '^config/' | sort -u)"
     [ "$config_files" = "$manifest_config_files" ] || {
       echo "config/ files and manifest sources differ" >&2
       diff -u <(printf '%s\n' "$config_files") <(printf '%s\n' "$manifest_config_files") >&2 || true
@@ -1013,8 +1034,8 @@ PY
   [ -f config/copilot-relay/config.yaml ]
   [ -f config/mcp/mcp-shared.json ]
   [ -f scripts/launchd/clean-npm-caches.sh ]
-  [ ! -e archive/tmux/.tmux.conf ]
-  [ ! -e archive/wezterm/wezterm.lua ]
+  [ -f config/legacy/tmux/tmux.conf ]
+  [ -f config/legacy/wezterm/wezterm.lua ]
 
   [ ! -f .rmux.conf ]
   [ ! -f .sonicterm/sonicterm.toml ]
@@ -1239,13 +1260,12 @@ run_retired_config_migration_smoke() {
 
   grep -Fq '"${repo_root}/config/copilot/AGENTS.md"' install.sh
   grep -Fq '"${repo_root}/copilot/AGENTS.md"' install.sh
+  grep -Fq $'link	config/legacy/tmux/tmux.conf	.tmux.conf' config/manifest.tsv
+  grep -Fq $'link	config/legacy/wezterm/wezterm.lua	.wezterm.lua' config/manifest.tsv
   grep -Eq '^[[:space:]]+rmux$' install.sh
+  grep -Eq '^[[:space:]]+wezterm$' install.sh
   if grep -Eq '^[[:space:]]+tmux$' install.sh; then
-    echo "installer still installs tmux" >&2
-    return 1
-  fi
-  if grep -Eq '^[[:space:]]+wezterm$|brew install --cask wezterm' install.sh; then
-    echo "installer still installs WezTerm" >&2
+    echo "installer unexpectedly installs tmux; legacy config relies on an existing binary" >&2
     return 1
   fi
   if grep -Eq 'command[[:space:]]+(tmux|wezterm)|wezterm cli' \
@@ -1253,11 +1273,13 @@ run_retired_config_migration_smoke() {
     echo "active launchers still call retired tmux or WezTerm commands" >&2
     return 1
   fi
-  [ ! -e archive/tmux/.tmux.conf ]
-  [ ! -e archive/wezterm/wezterm.lua ]
+  [ -f config/legacy/tmux/tmux.conf ]
+  [ -f config/legacy/tmux/tmux-fork.conf ]
+  [ -f config/legacy/wezterm/wezterm.lua ]
+  [ -f config/legacy/wezterm/palette-fork.lua ]
   [ ! -f .tmux.conf ]
   [ ! -f wezterm/wezterm.lua ]
-  echo "retired tmux/WezTerm link migration ok"
+  echo "legacy tmux/WezTerm configs moved under manifest-managed fork paths"
 }
 
 run_rmux_smoke() {
@@ -1318,13 +1340,13 @@ RMUX_THEME
     rmux -L "$socket" rename-window -t validate shell
     local tab_format inactive_style expected_cap tab_index flags bell activity expected_style expected_background
     tab_index="$(rmux -L "$socket" display-message -p -t validate -F '#I')"
-    expected_cap='#[fg=#365b80,bg=default,nobold]'
-    [ "$(rmux -L "$socket" display-message -p -t validate -F '#{E:window-status-current-format}')" = "${expected_cap}#[bg=#365b80,fg=#ffffff,bold] ${tab_index}:shell ${expected_cap}" ]
+    expected_cap='#[fg=blue,bg=default,nobold]'
+    [ "$(rmux -L "$socket" display-message -p -t validate -F '#{E:window-status-current-format}')" = "${expected_cap}#[bg=blue,fg=black,bold] ${tab_index}:shell ${expected_cap}" ]
     rmux -L "$socket" split-window -d -t validate /bin/sh
     rmux -L "$socket" resize-pane -Z -t validate
-    [ "$(rmux -L "$socket" display-message -p -t validate -F '#{E:window-status-current-format}')" = "${expected_cap}#[bg=#365b80,fg=#ffffff,bold] ${tab_index}:shell ZOOM ${expected_cap}" ]
+    [ "$(rmux -L "$socket" display-message -p -t validate -F '#{E:window-status-current-format}')" = "${expected_cap}#[bg=blue,fg=black,bold] ${tab_index}:shell ZOOM ${expected_cap}" ]
     rmux -L "$socket" resize-pane -Z -t validate
-    [ "$(rmux -L "$socket" display-message -p -t validate -F '#{E:window-status-current-format}')" = "${expected_cap}#[bg=#365b80,fg=#ffffff,bold] ${tab_index}:shell ${expected_cap}" ]
+    [ "$(rmux -L "$socket" display-message -p -t validate -F '#{E:window-status-current-format}')" = "${expected_cap}#[bg=blue,fg=black,bold] ${tab_index}:shell ${expected_cap}" ]
     inactive_style="$(rmux -L "$socket" show-options -gv @tab-inactive-style)"
     [ "$inactive_style" = '#{?window_bell_flag,#{window-status-bell-style},#{?window_activity_flag,#{window-status-activity-style},#{window-status-style}}}' ]
     for flags in 00 01 10 11; do
@@ -1428,9 +1450,15 @@ RMUX_THEME
 
 run_apollo_smoke() {
   local test_root fixtures fake_bin test_home lock bad_lock first_current curl_count_before curl_count_after out
+  local fork_bundle fork_home
 
   [ -f scripts/apollo-releases.tsv ]
   [ -f scripts/apollo-theme.sh ]
+  [ -f scripts/catppuccin-theme.sh ]
+  [ -f scripts/theme/catppuccin-mocha.json ]
+  [ -f scripts/theme/catppuccin-mocha.toml ]
+  [ -f scripts/theme/catppuccin-mocha-rmux.conf ]
+  [ -f scripts/theme/catppuccin-mocha-eza.yml ]
   [ ! -d themes/apollo ]
   [ ! -f config/sonicterm/themes/wezterm.toml ]
   grep -Fq 'theme = "apollo"' config/sonicterm/sonicterm.toml
@@ -1442,15 +1470,23 @@ run_apollo_smoke() {
   fi
   grep -Fq 'FAST_WORK_DIR' config/zsh/custom.zsh
   grep -Fq $'link\tconfig/zsh/themes/apollo.zsh-theme\t.oh-my-zsh/custom/themes/apollo.zsh-theme' config/manifest.tsv
+  jq -e '.name == "Catppuccin Mocha" and .colors.background == "#11111b" and .terminal.foreground == "#cdd6f4"' \
+    scripts/theme/catppuccin-mocha.json >/dev/null
+  grep -Fq 'source "${scripts_root}/catppuccin-theme.sh"' install.sh
+  grep -Fq 'apollo_customize_bundle' install.sh scripts/apollo-theme.sh
+  grep -Fq $'link	scripts/claude/session-cleanup.sh	.claude/session-cleanup.sh' config/manifest.tsv
+  grep -Fq $'link	scripts/claude/playwright-mcp.sh	.claude/playwright-mcp.sh' config/manifest.tsv
+  grep -Fq $'link	scripts/claude/playwright-mcp-proxy.js	.claude/playwright-mcp-proxy.js' config/manifest.tsv
+  grep -Fq $'link	config/claude/skills/sync-upstream/SKILL.md	.claude/skills/sync-upstream/SKILL.md' config/manifest.tsv
+  grep -Fq $'link	config/claude/skills/sync-upstream/SKILL.md	.copilot/skills/sync-upstream/SKILL.md' config/manifest.tsv
   jq -e '.theme == "custom:apollo"' config/claude/settings.json >/dev/null
   jq -e '.theme == "default"' config/copilot/settings.json >/dev/null
 
   if grep -En '#[0-9a-fA-F]{6}|38;2;|48;2;' \
       config/claude/statusline.sh \
       config/copilot/statusline.sh \
-      config/zsh/themes/apollo.zsh-theme || \
-      grep -Fxv "set -g window-status-current-style 'bg=#365b80,fg=#ffffff,bold'" config/rmux/rmux.conf | \
-        grep -En '#[0-9a-fA-F]{6}|38;2;|48;2;'; then
+      config/zsh/themes/apollo.zsh-theme \
+      config/rmux/rmux.conf; then
     echo "tracked active theme consumers contain embedded palette colors" >&2
     return 1
   fi
@@ -1667,16 +1703,51 @@ SH
   fi
   [ "$first_current" = "$(readlink "$test_home/.local/share/dot-configs/apollo/current")" ]
 
-  out="$(printf '{}' | HOME="$test_home" bash config/claude/statusline.sh)"
+  # Default installs apply the fork's Catppuccin adapters. Custom lock files
+  # remain available for the upstream manager's isolated fixture tests above.
+  fork_home="$test_root/fork-home"
+  mkdir -p "$fork_home/.claude" "$fork_home/.sonicterm/themes" \
+    "$test_root/fork-scripts/theme"
+  printf '{"keep":true}\n' >"$fork_home/.claude.json"
+  cp "$lock" "$test_root/fork-scripts/apollo-releases.tsv"
+  cp scripts/catppuccin-theme.sh "$test_root/fork-scripts/catppuccin-theme.sh"
+  cp scripts/theme/catppuccin-mocha.json "$test_root/fork-scripts/theme/"
+  cp scripts/theme/catppuccin-mocha.toml "$test_root/fork-scripts/theme/"
+  cp scripts/theme/catppuccin-mocha-rmux.conf "$test_root/fork-scripts/theme/"
+  cp scripts/theme/catppuccin-mocha-eza.yml "$test_root/fork-scripts/theme/"
+  (
+    export HOME="$fork_home"
+    export PATH="$fake_bin:$PATH"
+    unset APOLLO_RELEASES_FILE
+    export APOLLO_ROOT="$fork_home/.local/share/dot-configs/apollo"
+    export APOLLO_TEST_FIXTURES="$fixtures"
+    export APOLLO_TEST_CURL_LOG="$test_root/curl.log"
+    export APOLLO_SKIP_FSH=1
+    DOT_CONFIGS_INSTALL_LIB_ONLY=1 source install.sh
+    scripts_root="$test_root/fork-scripts"
+    install_apollo_themes
+  )
+  fork_bundle="$fork_home/.local/share/dot-configs/apollo/current"
+
+  grep -Fq 'background = "#11111b"' "$fork_home/.sonicterm/themes/apollo.toml"
+  grep -Fq 'hover_bg = "#181825"' "$fork_home/.sonicterm/themes/apollo.toml"
+  grep -Fq 'status-style "bg=#1e1e2e,fg=#cdd6f4"' \
+    "$fork_home/.config/rmux-apollo-theme/apollo-rmux.conf"
+  grep -Fq '#89b4fa' "$fork_home/.config/eza-apollo-theme/theme.yml"
+  jq -e '.overrides.text == "#cdd6f4" and .overrides.clawd_background == "#11111b"' \
+    "$fork_home/.claude/themes/apollo.json" >/dev/null
+
+  out="$(printf '{}' | HOME="$fork_home" bash config/claude/statusline.sh)"
   printf '%s' "$out" | grep -q $'\033\[38;2;'
-  out="$(printf '{}' | HOME="$test_home" CLAUDE_STATUSLINE_NO_COLOR=1 bash config/claude/statusline.sh)"
+  printf '%s' "$out" | grep -qE '38;2;(205;214;244|249;226;175|137;180;250)'
+  out="$(printf '{}' | HOME="$fork_home" CLAUDE_STATUSLINE_NO_COLOR=1 bash config/claude/statusline.sh)"
   if printf '%s' "$out" | grep -q $'\033\['; then
     echo "Claude no-color status line still emits ANSI escapes" >&2
     return 1
   fi
 
   local colors_file payload old_home pct code rows
-  colors_file="$test_home/.local/share/dot-configs/apollo/current/generated/statusline-colors.sh"
+  colors_file="$fork_bundle/generated/statusline-colors.sh"
   grep -Fq "C_FG_BRIGHT=" "$colors_file" || {
     echo "generated statusline colors are missing C_FG_BRIGHT" >&2
     return 1
@@ -1684,38 +1755,41 @@ SH
   (
     # shellcheck disable=SC1090
     . "$colors_file"
-    [ "$C_FG_BRIGHT" = "$(printf '\033[38;2;0;0;8m')" ] || {
+    [ "$C_FG_BRIGHT" = "$(printf '\033[38;2;245;224;220m')" ] || {
       echo "C_FG_BRIGHT was not generated from foregroundBright" >&2
       exit 1
     }
-    [ "$C_FG" = "$(printf '\033[38;2;0;0;5m')" ]
-    [ "$C_FG_DIM" = "$(printf '\033[38;2;0;0;7m')" ]
+    [ "$C_FG" = "$(printf '\033[38;2;205;214;244m')" ]
+    [ "$C_FG_DIM" = "$(printf '\033[38;2;166;173;200m')" ]
+    [ "$C_ORANGE" = "$(printf '\033[38;2;250;179;135m')" ]
+    [ "$CB_ORANGE" = "$(printf '\033[48;2;250;179;135m')" ]
+    [ "$C_BG_FG" = "$(printf '\033[38;2;30;30;46m')" ]
   )
 
   # Selected segments use the bright role for values; labels keep their roles.
-  payload='{"model":{"display_name":"Claude Sonnet 4.5 (max)"},"workspace":{"current_dir":"'"$test_home"'"},"context_window":{"used_percentage":50,"context_window_size":100000}}'
-  out="$(printf '%s' "$payload" | HOME="$test_home" \
+  payload='{"model":{"display_name":"Claude Sonnet 4.5 (max)"},"workspace":{"current_dir":"'"$fork_home"'"},"context_window":{"used_percentage":50,"context_window_size":100000}}'
+  out="$(printf '%s' "$payload" | HOME="$fork_home" \
     COPILOT_STATUSLINE_NO_ICONS=1 \
     COPILOT_STATUSLINE_SEGMENTS='model effort ctx \n path' \
     bash config/copilot/statusline.sh)"
-  printf '%s' "$out" | grep -Fq $'\033[38;2;0;0;9mModel\033[0m \033[38;2;0;0;8mSonnet 4.5\033[0m' || {
+  printf '%s' "$out" | grep -Fq $'\033[38;2;249;226;175mModel\033[0m \033[38;2;245;224;220mSonnet 4.5\033[0m' || {
     echo "Model segment lost the yellow label / bright value styling" >&2
     return 1
   }
-  printf '%s' "$out" | grep -Fq $'\033[38;2;0;0;13mEffort\033[0m \033[38;2;0;0;8mmax\033[0m' || {
+  printf '%s' "$out" | grep -Fq $'\033[38;2;203;166;247mEffort\033[0m \033[38;2;245;224;220mmax\033[0m' || {
     echo "Effort segment lost the bright value styling" >&2
     return 1
   }
-  printf '%s' "$out" | grep -Fq $'\033[38;2;0;0;14mPath\033[0m \033[38;2;0;0;8m~\033[0m' || {
+  printf '%s' "$out" | grep -Fq $'\033[38;2;148;226;213mPath\033[0m \033[38;2;245;224;220m~\033[0m' || {
     echo "Path segment lost the aqua label / bright value styling" >&2
     return 1
   }
   # Capacity suffix and ordinary separators use the dim foreground, not C_DIM.
-  printf '%s' "$out" | grep -Fq $'\033[38;2;0;0;7m/100k\033[0m' || {
+  printf '%s' "$out" | grep -Fq $'\033[38;2;166;173;200m/100k\033[0m' || {
     echo "context capacity is not using the dim foreground role" >&2
     return 1
   }
-  printf '%s' "$out" | grep -Fq $'\033[38;2;0;0;7m │ \033[0m' || {
+  printf '%s' "$out" | grep -Fq $'\033[38;2;166;173;200m │ \033[0m' || {
     echo "ordinary separators are not using the dim foreground role" >&2
     return 1
   }
@@ -1727,17 +1801,17 @@ SH
   # Numeric context boundaries keep green / yellow / red.
   while IFS=' ' read -r pct code; do
     [ -n "$pct" ] || continue
-    out="$(printf '{"context_window":{"used_percentage":%s}}' "$pct" | HOME="$test_home" \
+    out="$(printf '{"context_window":{"used_percentage":%s}}' "$pct" | HOME="$fork_home" \
       COPILOT_STATUSLINE_NO_ICONS=1 COPILOT_STATUSLINE_SEGMENTS='ctx' \
       bash config/copilot/statusline.sh)"
-    printf '%s' "$out" | grep -Fq "$(printf '\033[38;2;0;0;%sm%s%%' "$code" "$pct")" || {
+    printf '%s' "$out" | grep -Fq "$(printf '\033[38;2;%sm%s%%' "$code" "$pct")" || {
       echo "context color boundary changed at ${pct}%" >&2
       return 1
     }
   done <<'BOUNDS'
-49 11
-50 9
-80 10
+49 166;227;161
+50 249;226;175
+80 243;139;168
 BOUNDS
 
   # A file preserves the trailing newline of an empty last row.
@@ -1773,7 +1847,7 @@ BOUNDS
   out="$(printf '%s' "$payload" | HOME="$old_home" \
     COPILOT_STATUSLINE_NO_ICONS=1 COPILOT_STATUSLINE_SEGMENTS='model' \
     bash config/copilot/statusline.sh)"
-  printf '%s' "$out" | grep -Fq $'\033[38;2;0;0;9mModel\033[0m \033[38;2;0;0;5mSonnet 4.5\033[0m' || {
+  printf '%s' "$out" | grep -Fq $'\033[38;2;249;226;175mModel\033[0m \033[38;2;205;214;244mSonnet 4.5\033[0m' || {
     echo "an older color include did not fall back to C_FG" >&2
     return 1
   }
@@ -1784,7 +1858,7 @@ BOUNDS
     return 1
   fi
   out="$(printf '{}' | HOME="$test_home" bash config/claude/statusline.sh)"
-  if printf '%s' "$out" | grep -Fq $'\033[38;2;0;0;8m'; then
+  if printf '%s' "$out" | grep -Fq $'\033[38;2;245;224;220m'; then
     echo "Claude status line started emitting the bright foreground color" >&2
     return 1
   fi
@@ -1806,6 +1880,7 @@ run_smoke() {
   run_launchd_template_smoke
   run_subagent_smoke
   run_claude_subagent_limit_smoke
+  run_claude_cleanup_smoke
   run_model_default_smoke
   run_mcp_default_smoke
   run_copilot_terminal_smoke

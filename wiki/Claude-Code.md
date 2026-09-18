@@ -29,8 +29,8 @@ The tracked default is:
 ```text
 Claude-facing name: claude-sonnet-5[1m]
 Picker name:        native Sonnet name
-Saved Sonnet effort: high
-Launcher effort:     high
+Saved Sonnet effort: max
+Launcher effort:     max
 Relay route:        gptModel
 Upstream model:     gpt-6-astra
 ```
@@ -46,7 +46,7 @@ Other routes:
 
 Client names and upstream models are separate layers. The client keeps native Anthropic ids; the relay decides the upstream model. Do not write a GPT id, or a `_NAME` / `_DESCRIPTION` display override, into Claude-facing settings.
 
-The `[1m]` suffix keeps Claude Code's one-million-token model context accounting; the relay sends canonical `gpt-6-astra` upstream. The Haiku id is the installed CLI's own small-fast id and takes no `[1m]` suffix. Automatic compaction is expected at 750,000 tokens on the default Sonnet path, below Astra's advertised 872,000-token prompt limit within its 1M total window. This does not retain a full 1M-token conversation history. Relay-side default thinking is `medium` in `config/copilot-relay/config.yaml`; the saved Sonnet preference is `high`, while the shell launchers explicitly request `high`.
+The `[1m]` suffix keeps Claude Code's one-million-token model context accounting; the relay sends canonical `gpt-6-astra` upstream. The Haiku id is the installed CLI's own small-fast id and takes no `[1m]` suffix. Automatic compaction is expected at 750,000 tokens on the default Sonnet path, below Astra's advertised 872,000-token prompt limit within its 1M total window. This does not retain a full 1M-token conversation history. Relay-side default thinking is `max` in `config/copilot-relay/config.yaml`; the saved Sonnet preference and shell launchers also use `max`.
 
 Use a relay build with GPT-6 Astra support before relying on this setup (tracked in [copilot-relay issue #57](https://github.com/D0n9X1n/copilot-relay/issues/57)). Update model or effort defaults in `config/claude/settings.json`, `config/zsh/claude.zsh`, and `config/zsh/cc.zsh` together; the wrappers' `--model` and `--effort` flags override the settings. The relay's `gptModel` stays suffix-free. Its blank `webSearchBackend` also uses Astra. Keep the Opus route separate.
 
@@ -67,9 +67,9 @@ The Sonnet-facing slot routes to GPT-6 Astra through `gptModel`; Opus stays on i
 | `ANTHROPIC_DEFAULT_HAIKU_MODEL` | `claude-haiku-4-5-20251001` |
 | `ANTHROPIC_SMALL_FAST_MODEL` | `claude-haiku-4-5-20251001` |
 | `model` | `sonnet`; the picker's own short alias |
-| `modelSettings.claude-sonnet-5.effortLevel` | `high`; Sonnet's saved effort preference |
-| `MODEL_REASONING_EFFORT` | `high`; status-line fallback aligned with the launchers' `--effort high` |
-| `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` | `16` |
+| `modelSettings.claude-sonnet-5.effortLevel` | `max`; Sonnet's saved effort preference |
+| `MODEL_REASONING_EFFORT` | `max`; status-line fallback aligned with the launchers' `--effort max` |
+| `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` | `20` |
 | `statusLine.refreshInterval` | `100` |
 | `theme` | `custom:apollo`; generated theme assets stay local |
 | `autoCompactEnabled` | `true` |
@@ -77,7 +77,7 @@ The Sonnet-facing slot routes to GPT-6 Astra through `gptModel`; Opus stays on i
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `"100"`; targets compaction at 750,000 tokens with the default Sonnet output budget |
 | `feedbackDrafts` | `off` |
 
-`refreshInterval` belongs inside `statusLine`. The saved Sonnet preference is `high`. `MODEL_REASONING_EFFORT` and both launchers use `high`; their explicit `--effort` flags override the saved preference unless you supply another effort flag. No top-level `effortLevel` is managed. `high` is the shared reasoning-effort default for Claude Code and [Copilot CLI](Copilot-CLI.md), not a model name.
+`refreshInterval` belongs inside `statusLine`. Keep the Sonnet `modelSettings` preference, `MODEL_REASONING_EFFORT`, and both launchers aligned at `max`; their explicit `--effort` flags override the saved preference unless you supply another effort flag. No top-level `effortLevel` is managed. `max` is the shared reasoning-effort default for Claude Code and [Copilot CLI](Copilot-CLI.md), not a model name.
 
 ### 750k automatic-compaction target
 
@@ -94,6 +94,18 @@ This calculation gives an effective window of 750,000 tokens and an expected tri
 
 Do not put the local state file in Git.
 
+## Deterministic cleanup
+
+The `claude` and `cc` wrappers launch the real CLI through `~/.claude/session-cleanup.sh`. Each invocation receives a private mode-0700 root under `/tmp/claude-code-<uid>-cleanup/roots/`. Lifecycle hooks clear only that validated root: `SessionStart` exposes its `tools/` directory as `TMPDIR`, `Stop` closes Playwright and clears turn files, `StopFailure` performs best-effort turn cleanup, and `SessionEnd` plus the launcher trap perform final cleanup.
+
+Playwright MCP runs through `~/.claude/playwright-mcp.sh`, pinned to `0.0.79` with `--isolated`. A JSON-RPC proxy avoids launching Chromium for an idle `browser_close` hook and keeps generated output inside the owned root. Browser binaries under `~/Library/Caches/ms-playwright` are preserved. Ownership, token, UID, mode, and symlink validation prevent deleting another session or arbitrary paths. Read-only inventory:
+
+```sh
+~/.claude/session-cleanup.sh inventory
+```
+
+The cleanup scripts are tracked under `scripts/claude/` and installed through `config/manifest.tsv`. Browser-operation generations keep an older close response from hiding a newer navigation; the final close still reaches Playwright.
+
 ## Global instructions
 
 `config/claude/CLAUDE.md` installs as `~/.claude/CLAUDE.md` and sets user-wide response style. Conversational prose is direct and concise by default. Requests for more detail still win, and code, commands, findings, evidence, caveats, safety information, and technical precision stay complete.
@@ -109,7 +121,7 @@ After a PR merges, the global rules require local cleanup before the task is cal
 ```text
 --permission-mode bypassPermissions
 --model claude-sonnet-5[1m]
---effort high
+--effort max
 ```
 
 An explicit `--model`, `--model=`, `--effort`, or `--effort=` on the command line suppresses the matching default; the other default still applies.
@@ -126,7 +138,7 @@ Use `rmux claude` only when Claude Code should create agent-team panes. RMUX giv
 
 Claude Code v2.1.217 or later is required.
 
-The native admission value is 16. It is not a hard global ceiling:
+The native admission value is 20. It is not a hard global ceiling:
 
 - a user-started `/subtask` uses a slot but is not blocked by the same boundary;
 - a resumed agent can pass the configured count;

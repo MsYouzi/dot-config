@@ -59,7 +59,7 @@ The profile is adapted from RMUX's v0.10.0 human-friendly example and selected c
 
 The config clears stale `TERMINFO`, `TERMINFO_DIRS`, and `TERMCAP` inherited by a long-lived daemon, then sets `COLORTERM=truecolor` and `FORCE_COLOR=3`. It does not clear RMUX's own `TERM_PROGRAM` identity.
 
-`install.sh` verifies the official `rmux-apollo-theme` release and links its theme-only config under `~/.config/rmux-apollo-theme/`. The local RMUX file sources it for status, window, pane, message, and copy-mode styles. The bar matches the local bufferline.nvim setup: slope separators, a dark-blue active tab with bold white text, and inactive tabs on the bar background. Only the active-tab colors are a fixed bufferline-specific override; all other colors come from Apollo. No plugin manager or shell bootstrap is added.
+`install.sh` verifies the official `rmux-apollo-theme` release, applies the fork's Catppuccin adapter inside the bundle, and links its theme-only config under `~/.config/rmux-apollo-theme/`. The local RMUX file sources it for status, window, pane, message, and copy-mode styles. The bar keeps the bufferline-style slope separators, a highlighted active tab, and inactive tabs on the bar background. All colors come from the fork's `scripts/theme/catppuccin-mocha-rmux.conf` adapter; the active config adds no fixed active-tab colors. No plugin manager or shell bootstrap is added.
 
 The bottom bar shows a red, slanted session label and slanted, numbered window tabs on the left, with a plain `HH:MM` clock on the right. A one-cell gap separates the label and tabs. Session names are capped at 19 display cells so both sloped ends fit within the 24-cell label budget. Activity and bell colors remain visible. `PREFIX` appears while the prefix is active; `ZOOM` marks a zoomed window. Sloped ends use the same Powerline glyphs as bufferline's `slope` style (`U+E0BA` and `U+E0BC`), so the terminal font or its fallback must support them. The bar has no full date or decorative clock icon.
 
@@ -154,7 +154,7 @@ Use normal `claude` or the repository's `cc` helper for an ordinary Claude Code 
 
 ```sh
 rmux claude --permission-mode bypassPermissions \
-  --model 'claude-sonnet-5[1m]' --effort high
+  --model 'claude-sonnet-5[1m]' --effort max
 ```
 
 `rmux claude` enables Claude Code's tmux teammate mode and prepends a private, process-scoped `tmux` shim so Claude's teammate commands target RMUX. It does not replace the global `tmux` executable. This repository deliberately does not run `rmux setup tmux-shim`.
@@ -176,7 +176,7 @@ Use a named socket for tests and automation so they cannot alter the interactive
 
 ## Migration boundaries
 
-The retired tmux and WezTerm configs remain in v2.4.0 Git history. See [Repository operations](Repository-Operations.md) for recovery. The installer no longer installs those tools; user-owned config, `~/.tmux/plugins/`, and resurrect snapshots are preserved.
+Upstream retired tmux and WezTerm, while this fork retains its last Catppuccin versions under `config/legacy/` and installs them for compatibility. RMUX and SonicTerm remain the primary stack; tmux plugins and resurrect state remain user-local.
 
 TPM plugins were not ported because RMUX does not guarantee their behavior. SonicTerm is the actively managed outer terminal.
 

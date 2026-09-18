@@ -34,12 +34,18 @@ apollo_bundle_hash() {
       printf 'apollo-bundle-v1\n'
       apollo_sha256 "$lock"
       apollo_sha256 "$script"
+      if declare -F catppuccin_hash_inputs >/dev/null 2>&1; then
+        catppuccin_hash_inputs
+      fi
     } | shasum -a 256 | awk '{print $1}'
   elif command -v sha256sum >/dev/null 2>&1; then
     {
       printf 'apollo-bundle-v1\n'
       apollo_sha256 "$lock"
       apollo_sha256 "$script"
+      if declare -F catppuccin_hash_inputs >/dev/null 2>&1; then
+        catppuccin_hash_inputs
+      fi
     } | sha256sum | awk '{print $1}'
   else
     printf 'Error: Apollo installation requires shasum or sha256sum.\n' >&2
@@ -219,6 +225,11 @@ apollo_color() {
   jq -er --arg key "$2" '.colors[$key] | select(type == "string")' "$1"
 }
 
+apollo_color_or() {
+  jq -er --arg key "$2" --arg fallback "$3" \
+    '.colors[$key] // .colors[$fallback] | select(type == "string")' "$1"
+}
+
 apollo_rgb() {
   local value="${1#\#}"
   printf '%d %d %d\n' "$((16#${value:0:2}))" "$((16#${value:2:2}))" "$((16#${value:4:2}))"
@@ -247,16 +258,16 @@ apollo_generate_statusline_colors() {
   apollo_append_ansi C_BLUE fg "$(apollo_color "$palette" info)" "$output"
   apollo_append_ansi C_PURPLE fg "$(apollo_color "$palette" magenta)" "$output"
   apollo_append_ansi C_AQUA fg "$(apollo_color "$palette" cyan)" "$output"
-  apollo_append_ansi C_ORANGE fg "$(apollo_color "$palette" accent)" "$output"
+  apollo_append_ansi C_ORANGE fg "$(apollo_color_or "$palette" orange accent)" "$output"
   apollo_append_ansi C_FG fg "$(apollo_color "$palette" foreground)" "$output"
-  apollo_append_ansi C_FG_DIM fg "$(apollo_color "$palette" foregroundInactive)" "$output"
+  apollo_append_ansi C_FG_DIM fg "$(apollo_color_or "$palette" statuslineForegroundDim foregroundInactive)" "$output"
   apollo_append_ansi C_FG_BRIGHT fg "$(apollo_color "$palette" foregroundBright)" "$output"
   apollo_append_ansi CB_RED bg "$(apollo_color "$palette" danger)" "$output"
   apollo_append_ansi CB_BLUE bg "$(apollo_color "$palette" info)" "$output"
   apollo_append_ansi CB_YELLOW bg "$(apollo_color "$palette" accent)" "$output"
-  apollo_append_ansi CB_ORANGE bg "$(apollo_color "$palette" magenta)" "$output"
+  apollo_append_ansi CB_ORANGE bg "$(apollo_color_or "$palette" orange magenta)" "$output"
   apollo_append_ansi CB_GREEN bg "$(apollo_color "$palette" success)" "$output"
-  apollo_append_ansi C_BG_FG fg "$(apollo_color "$palette" background)" "$output"
+  apollo_append_ansi C_BG_FG fg "$(apollo_color_or "$palette" statuslineBackgroundText background)" "$output"
   chmod 644 "$output"
 }
 
@@ -407,7 +418,11 @@ apollo_validate_bundle() {
       rmux) file="${bundle}/rmux/apollo-rmux.conf" ;;
       eza) file="${bundle}/eza/theme.yml" ;;
     esac
-    expected="$(apollo_lock_sha "$id" "$lock")" || return 1
+    if declare -F catppuccin_expected_bundle_sha >/dev/null 2>&1; then
+      expected="$(catppuccin_expected_bundle_sha "$id" "$lock")" || return 1
+    else
+      expected="$(apollo_lock_sha "$id" "$lock")" || return 1
+    fi
     actual="$(apollo_sha256 "$file")" || return 1
     [ "$actual" = "$expected" ] || return 1
   done
@@ -431,6 +446,10 @@ apollo_build_bundle() {
       eza) cp "$blob" "${stage}/eza/theme.yml" ;;
     esac
   done
+
+  if declare -F apollo_customize_bundle >/dev/null 2>&1; then
+    apollo_customize_bundle "$stage" || return 1
+  fi
 
   apollo_validate_palette "${stage}/palette/apollo.json" || {
     printf 'Error: pinned Apollo palette has an unsupported schema.\n' >&2

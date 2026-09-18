@@ -51,6 +51,8 @@ type<TAB>source<TAB>home destination
 |---|---|
 | `config/git/ignore` | `~/.config/git/ignore` |
 | `config/rmux/rmux.conf` | `~/.rmux.conf` |
+| `config/legacy/tmux/tmux.conf` | `~/.tmux.conf`（fork 兼容） |
+| `config/legacy/wezterm/wezterm.lua` | `~/.wezterm.lua`（fork 兼容） |
 | `config/sonicterm/**.toml` | `~/.sonicterm/` 下的对应文件 |
 | `config/zsh/**` | `~/.oh-my-zsh/custom/` 下的对应文件 |
 | `config/claude/**` | `~/.claude/` |
@@ -61,12 +63,15 @@ type<TAB>source<TAB>home destination
 | `scripts/copilot/cleanup-legacy.sh` | `~/.copilot/cleanup-legacy.sh` |
 | `scripts/rmux/rmux-store` | `~/.local/bin/rmux-store` |
 | `scripts/rmux/store.py` | `~/.local/lib/rmux-store/store.py` |
+| `scripts/claude/session-cleanup.sh` | `~/.claude/session-cleanup.sh` |
+| `scripts/claude/playwright-mcp.sh` | `~/.claude/playwright-mcp.sh` |
+| `scripts/claude/playwright-mcp-proxy.js` | `~/.claude/playwright-mcp-proxy.js` |
 
 清单不接受归档源文件。Wiki 页面永远不会被安装。
 
 ## 外部主题文件
 
-Apollo 主题文件不保存在 Git 中，也不作为 manifest source。`scripts/apollo-releases.tsv` 固定精确的上游 tag 和 SHA-256。`install.sh` 验证这些文件，在 `~/.local/share/dot-configs/apollo/` 下构建完整本机 set，再把 SonicTerm、RMUX、eza 和 Claude 的生效主题路径链接到该 set。
+上游 Apollo releases 仍由 `scripts/apollo-releases.tsv` 以 checksum 固定。本 fork 在 `scripts/theme/` 保存 Catppuccin palette 和 adapter 输入；`scripts/catppuccin-theme.sh` 在 `install.sh` 构建同一个已验证本机 set 时应用它们，再把 SonicTerm、RMUX、eza 和 Claude 链接到该 set。
 
 状态栏、shell prompt 和 Claude 主题的生成文件，是从已验证规范 palette 派生的本机运行状态。下载失败或 checksum 不匹配时，不会替换当前 set。请看 [Apollo 主题](Apollo-Theme-zh-CN.md)。
 
@@ -149,18 +154,11 @@ Claude 的 local scope 条目位于 `~/.claude.json` 的 `projects[].mcpServers`
 
 ## 已停用链接
 
-安装器不再安装 tmux 或 WezTerm。只有当 `~/.tmux.conf`、`~/.wezterm.lua` 和停用的 SonicTerm `wezterm.toml` 仍指向本仓库过去的精确受管路径时，才会删除它们。用户自己的文件和链接会保留。手动安装的编辑器主题永远不会删除。
+上游已停用 tmux 和 WezTerm，但本 fork 为兼容性把最后一版 Catppuccin 配置保存在 `config/legacy/`，并通过 manifest 安装。RMUX 与 SonicTerm 仍是主要路径。安装器只会在停用的 SonicTerm `wezterm.toml` 链接仍指向本仓库过去的精确源文件时删除它；用户自己的文件和链接会保留。
 
 重复的 `~/.copilot/AGENTS.md` 链接也只在指向本仓库当前或过去的受管源文件时删除。用户文件和其他链接会保留。
 
-已停用的 tmux 和 WezTerm 配置保留在 Git 历史中。查看 v2.4.0 的副本：
-
-```sh
-git show v2.4.0:archive/tmux/.tmux.conf
-git show v2.4.0:archive/wezterm/wezterm.lua
-```
-
-这些副本仅供参考，不是生效配置。以后添加受管文件时，仍须遵循当前清单规则。
+这些 legacy 配置是生效的兼容文件，但不是主要终端栈。以后添加受管文件时，仍须遵循当前清单规则。
 
 ## 应用与检查
 
@@ -173,8 +171,8 @@ scripts/check.sh all
 然后检查主要链接：
 
 ```sh
-ls -l ~/.rmux.conf ~/.claude/settings.json ~/.copilot/settings.json \
-  ~/.copilot-relay/config.yaml ~/.sonicterm/sonicterm.toml
+ls -l ~/.rmux.conf ~/.tmux.conf ~/.wezterm.lua ~/.claude/settings.json \
+  ~/.copilot/settings.json ~/.copilot-relay/config.yaml ~/.sonicterm/sonicterm.toml
 ```
 
 更多服务检查在[服务与自动化](Services-and-Automation-zh-CN.md)。

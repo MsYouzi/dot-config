@@ -23,7 +23,7 @@ Tool-required files stay at fixed paths: `.claude/CLAUDE.md`, `.github/copilot-i
 
 Keep native client names. Claude Code uses `claude-sonnet-5[1m]` and `claude-haiku-4-5-20251001`.
 
-The relay maps every non-Opus route through `gptModel` to `gpt-6-astra`. Opus stays separate as `claude-opus-5`.
+The relay maps every non-Opus route through `gptModel` to `gpt-6-astra`. Opus stays separate as `claude-opus-5`; managed effort is `max` and native subagent admission is `20`.
 
 Do not replace a client identity with GPT. Never put a GPT id or a display override name back into Claude settings. Keep Sonnet and Opus model families separate.
 
@@ -41,7 +41,7 @@ Read the matching Wiki page:
 
 Keep English and `-zh-CN` Wiki pages together. Keep the root README short.
 
-Keep the status-line layout and cache aligned. Preserve the documented provider metrics and live-subagent differences. Launchd files under `config/launchd/` are templates; run `install.sh` to render them.
+Keep the status-line layout and cache aligned. Preserve the documented provider metrics and live-subagent differences. Fork colors come from `scripts/theme/catppuccin-mocha.*` through `scripts/catppuccin-theme.sh`; do not restore retired theme paths or embed colors in active consumers. Launchd files under `config/launchd/` are templates; run `install.sh` to render them.
 
 ## Check
 

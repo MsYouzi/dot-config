@@ -18,8 +18,8 @@ Copilot 使用内置 GitHub 集成；Claude 使用已认证的 `gh`。不需要�
 - `eza`、`jq`、`neovim` 和 autojump 等 shell 工具
 - Recursive 和 Nerd 字体
 - MOSconfig release 中的 RecMono Baker 与 St.Helens 字体
-- SonicTerm、RMUX 和 eza 的固定 Apollo theme releases
-- Claude、两个状态栏和 shell prompt 的本机 Apollo adapters
+- 通过 checksum 固定的 Apollo release 输入，以及用于 SonicTerm、RMUX 和 eza 的 fork Catppuccin adapters
+- Claude、两个状态栏和 shell prompt 的本机 Catppuccin adapters
 
 Claude Code 需要 v2.1.217 或更高版本。`theme.yml` 需要 eza v0.23.5 或更高版本。
 
@@ -35,7 +35,7 @@ SKIP_OH_MY_ZSH=1 ./install.sh
 
 ## Apollo release bundle
 
-`scripts/apollo-releases.tsv` 固定精确的上游 tag 和 SHA-256。安装器会复用已验证本机 blobs，在一个由 release lock 和 adapter code 派生的 bundle hash 下构建全部文件，并且只在完整 set 通过检查后切换 `current` symlink。第二次安装会直接使用已有 bundle，不下载或重写。
+`scripts/apollo-releases.tsv` 固定精确的上游 tag 和 SHA-256。Fork 随后应用 `scripts/theme/` 中受版本控制的 Catppuccin 输入。安装器会复用已验证本机 blobs，在一个由 release lock、adapter code 和 fork 主题输入共同派生的 bundle hash 下构建全部文件，并且只在完整 set 通过检查后切换 `current` symlink。第二次安装会直接使用已有 bundle，不下载或重写。
 
 第一次安装需要网络。只要固定 blobs 仍位于 `~/.local/share/dot-configs/apollo/`，以后就能离线安装。下载失败或 checksum 不匹配时，旧 bundle 保持生效。请看 [Apollo 主题](Apollo-Theme-zh-CN.md)。
 
@@ -53,13 +53,13 @@ http://127.0.0.1:4142
 
 ```yaml
 claudeSetup: false
-thinkEffort: medium
+thinkEffort: max
 upstreamTimeoutSeconds: 600
 gptModel: gpt-6-astra
 opusModel: claude-opus-5
 ```
 
-`claudeSetup: false` 会阻止 relay 重写链接的 Claude settings。Relay 对未指定 effort 的请求仍回退到 `medium`。Claude 保存的 Sonnet 偏好和启动器使用 `high`，Copilot CLI 设置及 `gg` 启动器也使用 `high`；客户端显式指定的 effort 优先于 relay 回退值。`upstreamTimeoutSeconds: 600` 允许单个 Claude 请求的上游 Copilot 调用最多等待十分钟。
+`claudeSetup: false` 会阻止 relay 重写链接的 Claude settings。Relay 对未指定 effort 的请求回退到 `max`。Claude 保存的 Sonnet 偏好和启动器使用 `max`，Copilot CLI 设置及 `gg` 启动器也使用 `max`；客户端显式指定的 effort 优先于 relay 回退值。`upstreamTimeoutSeconds: 600` 允许单个 Claude 请求的上游 Copilot 调用最多等待十分钟。
 
 登录一次：
 
@@ -164,6 +164,10 @@ launchctl kickstart -k "gui/$(id -u)/com.d0n9x1n.npm-cache-clean"
 安装器把它们合并到本机 Copilot MCP 数据，然后把 server map 导入 `~/.claude.json`。
 
 可选 MCP server 的 key 和 token 保留在本机 `~/.config/github-copilot/mcp.json`。永远不要放进共享文件。
+
+## Claude 临时文件清理
+
+Claude 生命周期 hooks 和 launcher traps 只清理 `/tmp/claude-code-<uid>-cleanup/roots/` 下每次调用独享的受管 root。Playwright 固定版本、隔离运行，并通过 proxy 跳过无浏览器状态时的空操作关闭；浏览器 cache 会保留。运行 `~/.claude/session-cleanup.sh inventory` 可获得受管及旧残留的只读报告。
 
 ## WakaTime
 

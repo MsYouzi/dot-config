@@ -18,8 +18,8 @@ On macOS, the installer can add:
 - shell tools such as `eza`, `jq`, `neovim`, and autojump
 - Recursive and Nerd fonts
 - RecMono Baker and St.Helens fonts from the MOSconfig release
-- pinned Apollo theme releases for SonicTerm, RMUX, and eza
-- local Apollo adapters for Claude, both status lines, and the shell prompt
+- checksum-pinned Apollo release inputs with fork-owned Catppuccin adapters for SonicTerm, RMUX, and eza
+- local Catppuccin adapters for Claude, both status lines, and the shell prompt
 
 The required Claude Code version is v2.1.217 or later. eza v0.23.5 or later is required for `theme.yml`.
 
@@ -35,7 +35,7 @@ The install log is `~/Library/Logs/dot-configs-install.log`.
 
 ## Apollo release bundle
 
-`scripts/apollo-releases.tsv` pins exact upstream tags and SHA-256 values. The installer reuses verified local blobs, builds all files under one bundle hash derived from the release lock and adapter code, and changes the `current` symlink only after the complete set validates. A second install uses the existing bundle without downloading or rewriting it.
+`scripts/apollo-releases.tsv` pins exact upstream tags and SHA-256 values. The fork then applies tracked Catppuccin inputs from `scripts/theme/`. The installer reuses verified local blobs, builds all files under one bundle hash derived from the release lock, adapter code, and fork theme inputs, and changes the `current` symlink only after the complete set validates. A second install uses the existing bundle without downloading or rewriting it.
 
 A first install needs network access. Later installs work offline while the pinned blobs remain under `~/.local/share/dot-configs/apollo/`. A failed download or checksum keeps the previous bundle active. See [Apollo theme](Apollo-Theme.md).
 
@@ -53,13 +53,13 @@ Important values:
 
 ```yaml
 claudeSetup: false
-thinkEffort: medium
+thinkEffort: max
 upstreamTimeoutSeconds: 600
 gptModel: gpt-6-astra
 opusModel: claude-opus-5
 ```
 
-`claudeSetup: false` stops the relay from rewriting the linked Claude settings. The relay fallback remains `medium` for requests that omit effort. Claude's saved Sonnet preference and launchers use `high`, as do Copilot CLI's settings and `gg` launcher; explicit client effort takes precedence over the relay fallback. `upstreamTimeoutSeconds: 600` allows up to ten minutes for a single Claude request's upstream Copilot calls.
+`claudeSetup: false` stops the relay from rewriting the linked Claude settings. The relay fallback is `max` for requests that omit effort. Claude's saved Sonnet preference and launchers use `max`, as do Copilot CLI's settings and `gg` launcher; explicit client effort takes precedence over the relay fallback. `upstreamTimeoutSeconds: 600` allows up to ten minutes for a single Claude request's upstream Copilot calls.
 
 Login once:
 
@@ -164,6 +164,10 @@ Its main log is `~/Library/Logs/npm-cache-clean.log`. The script keeps at most 5
 The installer merges them into local Copilot MCP data and then imports the server map into `~/.claude.json`.
 
 Keys and tokens for optional MCP servers stay in local `~/.config/github-copilot/mcp.json`. Never put them in the shared file.
+
+## Claude temporary-file cleanup
+
+Claude lifecycle hooks and launcher traps clean only per-invocation owned roots under `/tmp/claude-code-<uid>-cleanup/roots/`. Playwright is pinned, isolated, and routed through a proxy that suppresses no-op browser closes. The browser cache is retained. Run `~/.claude/session-cleanup.sh inventory` for a read-only report of owned and legacy residue.
 
 ## WakaTime
 

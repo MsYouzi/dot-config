@@ -38,7 +38,7 @@
 ## 快速开始
 
 ```sh
-git clone git@github.com:D0n9X1n/dot-config.git ~/Public/dot-configs
+git clone git@github.com:MsYouzi/dot-config.git ~/Public/dot-configs
 cd ~/Public/dot-configs
 ./install.sh
 npx copilot-relay auth

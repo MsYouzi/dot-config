@@ -51,6 +51,8 @@ The manifest check excludes SonicTerm `*.save.lock` runtime files. Leave these i
 |---|---|
 | `config/git/ignore` | `~/.config/git/ignore` |
 | `config/rmux/rmux.conf` | `~/.rmux.conf` |
+| `config/legacy/tmux/tmux.conf` | `~/.tmux.conf` (fork compatibility) |
+| `config/legacy/wezterm/wezterm.lua` | `~/.wezterm.lua` (fork compatibility) |
 | `config/sonicterm/**.toml` | matching files under `~/.sonicterm/` |
 | `config/zsh/**` | matching files under `~/.oh-my-zsh/custom/` |
 | `config/claude/**` | `~/.claude/` |
@@ -61,12 +63,15 @@ The manifest check excludes SonicTerm `*.save.lock` runtime files. Leave these i
 | `scripts/copilot/cleanup-legacy.sh` | `~/.copilot/cleanup-legacy.sh` |
 | `scripts/rmux/rmux-store` | `~/.local/bin/rmux-store` |
 | `scripts/rmux/store.py` | `~/.local/lib/rmux-store/store.py` |
+| `scripts/claude/session-cleanup.sh` | `~/.claude/session-cleanup.sh` |
+| `scripts/claude/playwright-mcp.sh` | `~/.claude/playwright-mcp.sh` |
+| `scripts/claude/playwright-mcp-proxy.js` | `~/.claude/playwright-mcp-proxy.js` |
 
 The manifest rejects archived sources. Wiki pages are never installed.
 
 ## External theme assets
 
-Apollo theme files are not stored in Git or listed as manifest sources. `scripts/apollo-releases.tsv` pins exact upstream tags and SHA-256 values. `install.sh` verifies those files, builds a complete local set under `~/.local/share/dot-configs/apollo/`, and links the active SonicTerm, RMUX, eza, and Claude theme paths to that set.
+Upstream Apollo releases remain checksum-pinned by `scripts/apollo-releases.tsv`. This fork stores Catppuccin palette and adapter inputs under `scripts/theme/`; `scripts/catppuccin-theme.sh` applies them while `install.sh` builds the same verified local set under `~/.local/share/dot-configs/apollo/` and links SonicTerm, RMUX, eza, and Claude to it.
 
 Generated status-line, shell-prompt, and Claude theme files are local runtime state derived from the verified canonical palette. A failed download or checksum does not replace the active set. See [Apollo theme](Apollo-Theme.md).
 
@@ -149,18 +154,11 @@ Local state is not the same as a user global. `~/.claude/CLAUDE.md` and `~/.copi
 
 ## Retired links
 
-The installer no longer installs tmux or WezTerm. It removes `~/.tmux.conf`, `~/.wezterm.lua`, and the retired SonicTerm `wezterm.toml` only when they still point to this repo's exact old managed paths. User-owned files and links stay. Manually installed editor themes are never removed.
+Upstream retired tmux and WezTerm, but this fork keeps their last customized Catppuccin configurations under `config/legacy/` and installs them through the manifest for compatibility. RMUX and SonicTerm remain the primary path. The installer removes only the retired SonicTerm `wezterm.toml` link when it points to this repo's exact old source; user-owned files and links stay.
 
 The duplicate `~/.copilot/AGENTS.md` link is also removed only when it points to this repo's current or former managed source. User files and foreign links stay.
 
-Retired tmux and WezTerm configs remain in Git history. Inspect the v2.4.0 copies with:
-
-```sh
-git show v2.4.0:archive/tmux/.tmux.conf
-git show v2.4.0:archive/wezterm/wezterm.lua
-```
-
-These are reference copies, not active config. Any future managed file must follow the current manifest rules.
+The legacy configs are active compatibility files, not the primary terminal stack. New managed files still follow the current manifest rules.
 
 ## Apply and check
 
@@ -173,8 +171,8 @@ scripts/check.sh all
 Then check the main links:
 
 ```sh
-ls -l ~/.rmux.conf ~/.claude/settings.json ~/.copilot/settings.json \
-  ~/.copilot-relay/config.yaml ~/.sonicterm/sonicterm.toml
+ls -l ~/.rmux.conf ~/.tmux.conf ~/.wezterm.lua ~/.claude/settings.json \
+  ~/.copilot/settings.json ~/.copilot-relay/config.yaml ~/.sonicterm/sonicterm.toml
 ```
 
 More service checks are in [Services and automation](Services-and-Automation.md).

@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "id": "apollo",
+  "name": "Catppuccin Mocha",
+  "appearance": "dark",
+  "colors": {
+    "background": "#11111b",
+    "surface": "#1e1e2e",
+    "surfaceHover": "#313244",
+    "selection": "#585b70",
+    "foreground": "#cdd6f4",
+    "foregroundSecondary": "#bac2de",
+    "foregroundInactive": "#6c7086",
+    "foregroundBright": "#f5e0dc",
+    "accent": "#f9e2af",
+    "danger": "#f38ba8",
+    "success": "#a6e3a1",
+    "info": "#89b4fa",
+    "magenta": "#cba6f7",
+    "cyan": "#94e2d5",
+    "orange": "#fab387",
+    "statuslineForegroundDim": "#a6adc8",
+    "statuslineBackgroundText": "#1e1e2e",
+    "ansiBrightBlack": "#585b70"
+  },
+  "roles": {
+    "canvas": "{colors.background}",
+    "textPrimary": "{colors.foreground}",
+    "textSecondary": "{colors.foregroundSecondary}",
+    "textInactive": "{colors.foregroundInactive}",
+    "focus": "{colors.accent}",
+    "error": "{colors.danger}",
+    "warning": "{colors.accent}",
+    "success": "{colors.success}",
+    "information": "{colors.info}"
+  },
+  "terminal": {
+    "foreground": "#cdd6f4",
+    "background": "#11111b",
+    "cursor": "#f5e0dc",
+    "cursorText": "#11111b",
+    "selection": {
+      "color": "#585b70",
+      "alpha": 0.5,
+      "foregroundMode": "preserve"
+    },
+    "ansi": [
+      "#45475a",
+      "#f38ba8",
+      "#a6e3a1",
+      "#f9e2af",
+      "#89b4fa",
+      "#f5c2e7",
+      "#94e2d5",
+      "#bac2de"
+    ],
+    "bright": [
+      "#585b70",
+      "#f38ba8",
+      "#a6e3a1",
+      "#f9e2af",
+      "#89b4fa",
+      "#f5c2e7",
+      "#94e2d5",
+      "#a6adc8"
+    ]
+  }
+}

@@ -29,8 +29,8 @@ Claude Code 第一次启动时会问是否允许自定义 `dummy` API key。请�
 ```text
 Claude 端名称： claude-sonnet-5[1m]
 Picker 名称：    原生 Sonnet 名称
-Sonnet 保存偏好：high
-启动器 effort：  high
+Sonnet 保存偏好：max
+启动器 effort：  max
 Relay 路由：     gptModel
 上游模型：       gpt-6-astra
 ```
@@ -46,7 +46,7 @@ Claude Code 保留原生客户端身份。名称中没有 `opus`，所以 copilo
 
 客户端名称和上游模型是两层。客户端保留原生 Anthropic ID；上游模型由 relay 决定。不要把 GPT ID 或 `_NAME` / `_DESCRIPTION` 显示覆盖写进 Claude 端设置。
 
-`[1m]` 后缀让 Claude Code 使用一百万 token 的模型 context 计数；relay 向上游发送规范 ID `gpt-6-astra`。Haiku ID 是已安装 CLI 自身的 small-fast ID，不加 `[1m]` 后缀。默认 Sonnet 路径预计在 750,000 tokens 时触发自动压缩，低于 Astra 的 1M 总窗口内公布的 872,000-token prompt 上限。这并不意味着会保留完整的 1M-token 对话历史。Relay 端默认 thinking 在 `config/copilot-relay/config.yaml` 中设为 `medium`；Sonnet 保存的偏好为 `high`，shell 启动器显式请求 `high`。
+`[1m]` 后缀让 Claude Code 使用一百万 token 的模型 context 计数；relay 向上游发送规范 ID `gpt-6-astra`。Haiku ID 是已安装 CLI 自身的 small-fast ID，不加 `[1m]` 后缀。默认 Sonnet 路径预计在 750,000 tokens 时触发自动压缩，低于 Astra 的 1M 总窗口内公布的 872,000-token prompt 上限。这并不意味着会保留完整的 1M-token 对话历史。Relay 端默认 thinking 在 `config/copilot-relay/config.yaml` 中设为 `max`；Sonnet 保存的偏好和 shell 启动器也使用 `max`。
 
 使用本设置前，请先使用支持 GPT-6 Astra 的 relay 构建（见 [copilot-relay issue #57](https://github.com/D0n9X1n/copilot-relay/issues/57)）。修改模型或 effort 默认值时应同时更新 `config/claude/settings.json`、`config/zsh/claude.zsh` 和 `config/zsh/cc.zsh`；wrapper 的 `--model` 和 `--effort` flags 优先于设置文件。Relay 的 `gptModel` 不带后缀，空白的 `webSearchBackend` 也使用 Astra。Opus 路由保持独立。
 
@@ -67,9 +67,9 @@ Sonnet-facing 槽位通过 `gptModel` 路由到 GPT-6 Astra；Opus 仍使用独�
 | `ANTHROPIC_DEFAULT_HAIKU_MODEL` | `claude-haiku-4-5-20251001` |
 | `ANTHROPIC_SMALL_FAST_MODEL` | `claude-haiku-4-5-20251001` |
 | `model` | `sonnet`；选择器自身的短别名 |
-| `modelSettings.claude-sonnet-5.effortLevel` | `high`；Sonnet 保存的 effort 偏好 |
-| `MODEL_REASONING_EFFORT` | `high`；状态栏回退值与启动器的 `--effort high` 保持一致 |
-| `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` | `16` |
+| `modelSettings.claude-sonnet-5.effortLevel` | `max`；Sonnet 保存的 effort 偏好 |
+| `MODEL_REASONING_EFFORT` | `max`；状态栏回退值与启动器的 `--effort max` 保持一致 |
+| `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` | `20` |
 | `statusLine.refreshInterval` | `100` |
 | `theme` | `custom:apollo`；生成的主题资源仍保留在本机 |
 | `autoCompactEnabled` | `true` |
@@ -77,7 +77,7 @@ Sonnet-facing 槽位通过 `gptModel` 路由到 GPT-6 Astra；Opus 仍使用独�
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `"100"`；默认 Sonnet 输出预算下，目标是在 750,000 tokens 时触发压缩 |
 | `feedbackDrafts` | `off` |
 
-`refreshInterval` 必须放在 `statusLine` 里面。Sonnet 保存的偏好为 `high`。`MODEL_REASONING_EFFORT` 和两个启动器均为 `high`；除非显式提供其他 effort flag，否则启动器的 `--effort` 会覆盖保存的偏好。不管理顶层 `effortLevel`。`high` 是 Claude Code 和 [Copilot CLI](Copilot-CLI-zh-CN.md) 共同的默认推理强度，不是模型名称。
+`refreshInterval` 必须放在 `statusLine` 里面。Sonnet 的 `modelSettings` 偏好、`MODEL_REASONING_EFFORT` 和两个启动器应统一为 `max`；除非显式提供其他 effort flag，否则启动器的 `--effort` 会覆盖保存的偏好。不管理顶层 `effortLevel`。`max` 是 Claude Code 和 [Copilot CLI](Copilot-CLI-zh-CN.md) 共同的默认推理强度，不是模型名称。
 
 ### 750k 自动压缩目标
 
@@ -94,6 +94,18 @@ Sonnet-facing 槽位通过 `gptModel` 路由到 GPT-6 Astra；Opus 仍使用独�
 
 不要把本机状态文件放进 Git。
 
+## 确定性清理
+
+`claude` 和 `cc` wrappers 通过 `~/.claude/session-cleanup.sh` 启动真实 CLI。每次调用都会在 `/tmp/claude-code-<uid>-cleanup/roots/` 下得到独立的 mode-0700 root。生命周期 hooks 只清理经过验证的 root：`SessionStart` 把其中的 `tools/` 目录设为 `TMPDIR`，`Stop` 关闭 Playwright 并清理本轮文件，`StopFailure` 尽力执行本轮清理，`SessionEnd` 与 launcher trap 执行最终清理。
+
+Playwright MCP 通过 `~/.claude/playwright-mcp.sh` 运行，固定为 `0.0.79` 并启用 `--isolated`。JSON-RPC proxy 避免空闲的 `browser_close` hook 启动 Chromium，并把生成输出限制在受管 root 中。`~/Library/Caches/ms-playwright` 下的浏览器二进制会保留。所有删除都先验证 ownership token、UID、mode 和 symlink，避免删除其他 session 或任意路径。只读清单：
+
+```sh
+~/.claude/session-cleanup.sh inventory
+```
+
+清理脚本保存在 `scripts/claude/`，并通过 `config/manifest.tsv` 安装。浏览器操作的 generation 计数避免较早的关闭响应覆盖较新的导航状态，确保最终关闭请求仍会发送给 Playwright。
+
 ## 全局指令
 
 `config/claude/CLAUDE.md` 安装为 `~/.claude/CLAUDE.md`，并设置用户级回复风格。对话文字默认直接、简短。明确要求更多细节时仍按要求回答；代码、命令、检查结果、证据、必要说明、安全信息和技术准确性必须保持完整。
@@ -109,7 +121,7 @@ PR 合并后，全局规则要求先完成本机清理，再宣布任务完成�
 ```text
 --permission-mode bypassPermissions
 --model claude-sonnet-5[1m]
---effort high
+--effort max
 ```
 
 命令行上显式给出 `--model`、`--model=`、`--effort` 或 `--effort=` 时，对应的默认值不再注入；另一个默认值仍然生效。
@@ -126,7 +138,7 @@ PR 合并后，全局规则要求先完成本机清理，再宣布任务完成�
 
 需要 Claude Code v2.1.217 或更高版本。
 
-原生 admission 值是 16。它不是全局硬上限：
+原生 admission 值是 20。它不是全局硬上限：
 
 - 用户启动的 `/subtask` 会占一个 slot，但不被同一个边界拦截；
 - 恢复的 agent 可以超过设置数量；

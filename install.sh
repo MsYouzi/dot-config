@@ -8,6 +8,10 @@ manifest="${config_root}/manifest.tsv"
 timestamp="$(date +"%Y%m%d%H%M%S")"
 install_log="${DOT_CONFIGS_INSTALL_LOG:-${HOME}/Library/Logs/dot-configs-install.log}"
 source "${scripts_root}/apollo-theme.sh"
+source "${scripts_root}/catppuccin-theme.sh"
+apollo_customize_bundle() {
+  catppuccin_apply_palette "$1"
+}
 RED="$(printf '\033[31m')"
 BOLD="$(printf '\033[1m')"
 RESET="$(printf '\033[0m')"
@@ -634,6 +638,7 @@ install_macos_deps() {
 
   local claude_min_version="2.1.217"
   local font_casks=(
+    wezterm
     font-recursive # Provides the Recursive Mono variable family (St.Helens, Casual, Linear, Duotone)
     font-recursive-mono-nerd-font
     font-symbols-only-nerd-font
@@ -996,10 +1001,15 @@ if is_macos && have_cmd python3 && have_cmd rmux; then
   }
 fi
 remove_repo_symlink "${HOME}/.gitignore" "${repo_root}/.gitignore" "old global Git ignore"
-remove_repo_symlink "${HOME}/.tmux.conf" "${repo_root}/.tmux.conf" "tmux config"
-remove_repo_symlink "${HOME}/.wezterm.lua" "${repo_root}/wezterm/wezterm.lua" "WezTerm config"
 remove_repo_symlink "${HOME}/.sonicterm/themes/wezterm.toml" \
   "${repo_root}/config/sonicterm/themes/wezterm.toml" "SonicTerm WezTerm theme"
+# Retire only the fork's exact pre-migration palette links, never user files.
+remove_repo_symlink "${HOME}/.sonicterm/themes/wezterm.toml" \
+  "${repo_root}/.sonicterm/themes/wezterm.toml" "old SonicTerm WezTerm theme"
+remove_repo_symlink "${HOME}/.sonicterm/themes/catppuccin-mocha.toml" \
+  "${repo_root}/.sonicterm/themes/catppuccin-mocha.toml" "old SonicTerm fork palette"
+remove_repo_symlink "${HOME}/.tmux.fork.conf" \
+  "${repo_root}/.tmux.fork.conf" "old tmux fork palette"
 remove_legacy_claude_subagent_hook
 remove_repo_symlink "${HOME}/.copilot/AGENTS.md" \
   "${repo_root}/config/copilot/AGENTS.md" "duplicate Copilot instructions"

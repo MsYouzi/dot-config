@@ -155,43 +155,6 @@ fi
 # Existing bundles may not yet export the bright foreground role.
 [ -n "$C_FG_BRIGHT" ] || C_FG_BRIGHT="$C_FG"
 
-# Fork-local palette override. Everything above is upstream's (Gruvbox Dark
-# Hard) and is deliberately left byte-identical to the `source` remote so
-# upstream pulls never conflict here. This fork is Catppuccin Mocha, so the
-# palette is re-assigned from themes/apollo/statusline-palette.sh — the same
-# file claude/statusline.sh sources, which is what keeps the two in lockstep.
-#
-# Guarded on $C_RESET rather than re-testing the NO_COLOR/NO_DIM pair above:
-# the else-branch blanks it, so a non-empty value means "colors are on"
-# whatever condition upstream used. NO_COLOR output therefore stays uncolored.
-# Missing file (script copied without the repo) => upstream's Gruvbox. Degraded,
-# never broken. See the palette file's header for the full rationale.
-if [ -n "$C_RESET" ]; then
-  # Resolve this script to its real path. install.sh creates an ABSOLUTE
-  # symlink (~/.copilot/statusline.sh -> <repo>/copilot/statusline.sh), but
-  # resolve relative targets and symlink chains too: getting this wrong fails
-  # silently back to upstream's Gruvbox, which is the exact bug this design
-  # exists to prevent. `readlink -f` is not portable (BSD readlink lacks -f on
-  # older macOS), so walk the chain by hand. Bounded to 10 hops so a symlink
-  # loop cannot hang the statusline.
-  __sl_self="${BASH_SOURCE[0]:-$0}"
-  __sl_hops=0
-  while [ -L "$__sl_self" ] && [ "$__sl_hops" -lt 10 ]; do
-    __sl_dir="${__sl_self%/*}"
-    __sl_self="$(readlink "$__sl_self")"
-    case "$__sl_self" in
-      /*) ;;                                  # absolute — use as-is
-      *) __sl_self="${__sl_dir}/${__sl_self}" ;;  # relative — against link's dir
-    esac
-    __sl_hops=$((__sl_hops + 1))
-  done
-  __sl_repo="$(cd "${__sl_self%/*}/.." 2>/dev/null && pwd)"
-  __sl_palette="${__sl_repo}/themes/apollo/statusline-palette.sh"
-  # shellcheck source=../themes/apollo/statusline-palette.sh
-  [ -r "$__sl_palette" ] && . "$__sl_palette"
-  unset __sl_self __sl_dir __sl_hops __sl_repo __sl_palette
-fi
-
 # Per-side padding emitted from inside the script. Copilot CLI's
 # statusLine.padding* fields are silently ignored — only the single
 # `padding` key is honored — so we apply our own spacing here for

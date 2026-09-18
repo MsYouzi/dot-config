@@ -7,14 +7,14 @@ This repo is for macOS. `install.sh` can set up a new Mac. It is safe to run aga
 ## Install
 
 ```sh
-git clone git@github.com:D0n9X1n/dot-config.git ~/Public/dot-configs
+git clone git@github.com:MsYouzi/dot-config.git ~/Public/dot-configs
 cd ~/Public/dot-configs
 ./install.sh
 ```
 
-The script can install Homebrew, RMUX, Claude Code, Copilot CLI, copilot-relay, shell tools, fonts, and oh-my-zsh. It downloads and verifies the pinned Apollo theme releases, builds local adapters, then links the files listed in `config/manifest.tsv`.
+The script can install Homebrew, RMUX, WezTerm, Claude Code, Copilot CLI, copilot-relay, shell tools, fonts, and oh-my-zsh. It downloads and verifies the pinned theme inputs, applies this fork's Catppuccin adapters, then links the files listed in `config/manifest.tsv`. Legacy tmux configuration is installed when tmux is already present.
 
-The first Apollo install needs network access. Later runs can reuse the verified local bundle under `~/.local/share/dot-configs/apollo/`.
+The first theme-bundle install needs network access. Later runs can reuse the verified local bundle under `~/.local/share/dot-configs/apollo/`.
 
 The full log is here:
 

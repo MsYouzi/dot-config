@@ -59,7 +59,7 @@ RMUX 使用 tmux 命令语法，不是 JSON、YAML 或 TOML。配置可以执行
 
 配置会清除守护进程可能继承的陈旧 `TERMINFO`、`TERMINFO_DIRS` 和 `TERMCAP`，然后设置 `COLORTERM=truecolor` 与 `FORCE_COLOR=3`。它不会清除 RMUX 自己的 `TERM_PROGRAM` 身份。
 
-`install.sh` 会验证官方 `rmux-apollo-theme` release，并把仅含主题的配置链接到 `~/.config/rmux-apollo-theme/`。本机 RMUX 文件会 source 它，用于 status、window、pane、message 和 copy-mode 样式。状态栏与本机 bufferline.nvim 配置保持一致：斜边分隔符、深蓝底加粗白字的活动标签，以及与状态栏背景一致的非活动标签。只有活动标签的颜色使用固定的 bufferline 专用覆盖值，其余颜色均来自 Apollo。不会添加 plugin manager 或 shell bootstrap。
+`install.sh` 会验证官方 `rmux-apollo-theme` release，在 bundle 内应用 fork 的 Catppuccin adapter，再把仅含主题的配置链接到 `~/.config/rmux-apollo-theme/`。本机 RMUX 文件会 source 它，用于 status、window、pane、message 和 copy-mode 样式。状态栏保留 bufferline 风格的斜边分隔符、高亮活动标签，以及与状态栏背景一致的非活动标签。全部颜色来自 fork 的 `scripts/theme/catppuccin-mocha-rmux.conf` adapter；生效配置不额外固定活动标签颜色。不会添加 plugin manager 或 shell bootstrap。
 
 底部状态栏左侧显示红色斜边会话标签和带编号的斜边窗口标签，右侧只显示 `HH:MM` 时钟。会话标签与窗口标签之间、各窗口标签之间均留一个字符的间距。会话名称最多占 19 个显示单元，确保两端斜边可完整放入 24 单元的标签宽度内。活动提醒和响铃颜色仍然可见。Prefix 生效时显示 `PREFIX`，窗口缩放时显示 `ZOOM`。斜边使用与 bufferline 的 `slope` 样式相同的 Powerline 字形（`U+E0BA` 和 `U+E0BC`），终端字体或后备字体须支持它们。不显示完整日期或装饰性时钟图标。
 
@@ -154,7 +154,7 @@ set -s set-clipboard on
 
 ```sh
 rmux claude --permission-mode bypassPermissions \
-  --model 'claude-sonnet-5[1m]' --effort high
+  --model 'claude-sonnet-5[1m]' --effort max
 ```
 
 `rmux claude` 会启用 Claude Code 的 tmux teammate mode，并在 Claude 进程的 `PATH` 前加入私有、进程级的 `tmux` shim，使 teammate 命令指向 RMUX。它不会替换系统全局的 `tmux`。本仓库不会运行 `rmux setup tmux-shim`。
@@ -176,7 +176,7 @@ Copilot CLI 尚不能识别所有 RMUX/SonicTerm 终端身份。因此仓库中�
 
 ## 迁移边界
 
-已停用的 tmux 和 WezTerm 配置保留在 v2.4.0 的 Git 历史中。恢复方法见[仓库操作](Repository-Operations-zh-CN.md)。安装器不再安装这两个工具；用户自己的配置、`~/.tmux/plugins/` 和 resurrect 快照会保留。
+上游已停用 tmux 和 WezTerm，但本 fork 在 `config/legacy/` 保留最后一版 Catppuccin 配置，并为兼容性继续安装。RMUX 和 SonicTerm 仍是主要终端栈；tmux plugins 与 resurrect 状态保留在用户本机。
 
 TPM 插件没有迁移，因为 RMUX 不保证它们的行为。SonicTerm 是当前受管的外层终端。
 

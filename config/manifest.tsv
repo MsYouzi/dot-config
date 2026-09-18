@@ -1,6 +1,10 @@
 # type	source	destination
 link	config/git/ignore	.config/git/ignore
 link	config/rmux/rmux.conf	.rmux.conf
+link	config/legacy/tmux/tmux.conf	.tmux.conf
+link	config/legacy/tmux/tmux-fork.conf	.config/dot-configs-legacy/tmux-fork.conf
+link	config/legacy/wezterm/wezterm.lua	.wezterm.lua
+link	config/legacy/wezterm/palette-fork.lua	.config/dot-configs-legacy/wezterm/palette-fork.lua
 link	config/sonicterm/sonicterm.toml	.sonicterm/sonicterm.toml
 link	config/sonicterm/keymaps/sonicterm-linux.toml	.sonicterm/keymaps/sonicterm-linux.toml
 link	config/sonicterm/keymaps/sonicterm-macos.toml	.sonicterm/keymaps/sonicterm-macos.toml
@@ -8,7 +12,13 @@ link	config/sonicterm/keymaps/sonicterm-windows.toml	.sonicterm/keymaps/sonicter
 link	config/claude/CLAUDE.md	.claude/CLAUDE.md
 link	config/claude/settings.json	.claude/settings.json
 link	config/claude/statusline.sh	.claude/statusline.sh
+link	scripts/claude/session-cleanup.sh	.claude/session-cleanup.sh
+link	scripts/claude/playwright-mcp.sh	.claude/playwright-mcp.sh
+link	scripts/claude/playwright-mcp-proxy.js	.claude/playwright-mcp-proxy.js
 link	config/claude/skills/update-settings/SKILL.md	.claude/skills/update-settings/SKILL.md
+link	config/claude/skills/update-settings/SKILL.md	.copilot/skills/update-settings/SKILL.md
+link	config/claude/skills/sync-upstream/SKILL.md	.claude/skills/sync-upstream/SKILL.md
+link	config/claude/skills/sync-upstream/SKILL.md	.copilot/skills/sync-upstream/SKILL.md
 link	config/copilot/copilot-instructions.md	.copilot/copilot-instructions.md
 link	config/copilot/settings.json	.copilot/settings.json
 link	config/copilot/statusline.sh	.copilot/statusline.sh

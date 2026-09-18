@@ -19,6 +19,8 @@ function claude {
   local has_model=0
   local has_effort=0
   local arg
+  local claude_bin="${commands[claude]:-/usr/local/bin/claude}"
+  local cleanup_helper="$HOME/.claude/session-cleanup.sh"
 
   for arg in "$@"; do
     case "$arg" in
@@ -29,7 +31,7 @@ function claude {
 
   defaults=(--permission-mode bypassPermissions)
   (( has_model )) || defaults+=(--model 'claude-sonnet-5[1m]')
-  (( has_effort )) || defaults+=(--effort high)
+  (( has_effort )) || defaults+=(--effort max)
 
-  command claude "${defaults[@]}" "$@"
+  command "$cleanup_helper" launch "$claude_bin" "${defaults[@]}" "$@"
 }

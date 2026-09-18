@@ -26,7 +26,7 @@ Never edit a managed file under `$HOME`.
 | Relay | `config/copilot-relay/config.yaml` | `~/.copilot-relay/config.yaml` |
 | Safe MCP data | `config/mcp/mcp-shared.json` | merged locally |
 | launchd templates | `config/launchd/` | `~/Library/LaunchAgents/` |
-| Apollo runtime | `scripts/apollo-releases.tsv` + `scripts/apollo-theme.sh` | `~/.local/share/dot-configs/apollo/` and consumer links |
+| Theme runtime | `scripts/apollo-releases.tsv` + `scripts/apollo-theme.sh` + `scripts/catppuccin-theme.sh` + `scripts/theme/` | `~/.local/share/dot-configs/apollo/` and consumer links |
 
 `config/manifest.tsv` is the tracked-file install list. Add a row when a new managed file is added.
 
@@ -56,6 +56,8 @@ Sonnet and Opus are separate families.
 - Opus names route to `opusModel` and stay `claude-opus-5`.
 - Keep `[1m]` on Claude-facing defaults that need one-million-token accounting. The Haiku id takes no suffix.
 - Do not put a GPT id, or a `_NAME` / `_DESCRIPTION` display override, into Claude settings.
+- Keep Claude, Copilot, relay, and launch-wrapper effort defaults aligned at `max`.
+- Keep `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS="20"`; it is a native admission value, not an absolute ceiling.
 
 Do not change both families when the task names one.
 
