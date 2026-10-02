@@ -2,7 +2,7 @@
 
 English | [简体中文](RMUX-zh-CN.md)
 
-This repository uses RMUX 0.10.x as its terminal multiplexer. The tracked source is `config/rmux/rmux.conf`; `install.sh` links it to `~/.rmux.conf` and installs the Homebrew `rmux` formula on new Macs.
+**Platform rule:** Windows uses RMUX 0.10.x. macOS and Linux use [native tmux](Tmux.md). Both use the same Apollo theme and status style, with separate sessions and state. The RMUX source is `config/rmux/rmux.conf`; `install.sh` links it to `~/.rmux.conf`. The macOS installer no longer installs the `rmux` formula.
 
 ## What RMUX is
 
@@ -36,7 +36,7 @@ $XDG_CONFIG_HOME/rmux/rmux.conf
 ~/.config/rmux/rmux.conf
 ```
 
-If no native file loads, RMUX can fall back to standard tmux config locations. That fallback is intentionally avoided here: the archived tmux config contains executable TPM bootstrap commands. A native `~/.rmux.conf` makes startup deterministic. For diagnostics, `RMUX_DISABLE_TMUX_FALLBACK=1` also disables fallback.
+If no native file loads, RMUX can fall back to standard tmux config locations. That fallback is intentionally avoided here: `~/.tmux.conf` now belongs to native tmux, not RMUX. The archived tmux profile also contains executable TPM bootstrap commands. A native `~/.rmux.conf` keeps the engines separate. For diagnostics, `RMUX_DISABLE_TMUX_FALLBACK=1` also disables fallback.
 
 RMUX config is tmux command syntax, not JSON, YAML, or TOML. It can execute `run-shell`, conditionals, and sourced files, so treat it as executable code.
 
@@ -53,9 +53,10 @@ The profile is adapted from RMUX's v0.10.0 human-friendly example and selected c
 | Window/pane indices | Start at 1; windows renumber after close |
 | Copy mode | Vi keys; `pbcopy` plus OSC 52 |
 | Status | One bottom row, styled by the pinned Apollo RMUX release |
-| Titles | Automatic rename off; `#S · #W` propagated outward |
+| Titles | Automatic rename off by default; empty rename resets it for that window; `#S · #W` propagated outward |
 | Terminal identity | `TERM=tmux-256color`; `TERM_PROGRAM=rmux` is preserved |
 | Working directory | Active pane OSC 7 reports are relayed to SonicTerm |
+| Modified keys | Extended keys on; CSI-u output to requesting pane apps |
 
 The config clears stale `TERMINFO`, `TERMINFO_DIRS`, and `TERMCAP` inherited by a long-lived daemon, then sets `COLORTERM=truecolor` and `FORCE_COLOR=3`. It does not clear RMUX's own `TERM_PROGRAM` identity.
 
@@ -63,11 +64,17 @@ The config clears stale `TERMINFO`, `TERMINFO_DIRS`, and `TERMCAP` inherited by 
 
 The bottom bar shows a red, slanted session label and slanted, numbered window tabs on the left, with a plain `HH:MM` clock on the right. A one-cell gap separates the label and tabs. Session names are capped at 19 display cells so both sloped ends fit within the 24-cell label budget. Activity and bell colors remain visible. `PREFIX` appears while the prefix is active; `ZOOM` marks a zoomed window. Sloped ends use the same Powerline glyphs as bufferline's `slope` style (`U+E0BA` and `U+E0BC`), so the terminal font or its fallback must support them. The bar has no full date or decorative clock icon.
 
-The outer `xterm-256color` capability includes `osc7`, and `set-titles` is enabled. Oh My Zsh's `omz_termsupport_cwd` hook emits a host-qualified OSC 7 report at each prompt. RMUX records that report per pane and relays the active pane's path to SonicTerm, so relative file paths resolve against the correct directory. `#{pane_current_path}` is process metadata and does not replace the shell report. After changing `terminal-features`, reload the config and detach/reattach so the client capabilities are resolved again.
+The outer `xterm-256color` capability includes `osc7` and `hyperlinks`, and `set-titles` is enabled. `hyperlinks` declares that SonicTerm accepts OSC 8 links; RMUX 0.10 forwards them even without it, but native tmux does not. Oh My Zsh's `omz_termsupport_cwd` hook emits a host-qualified OSC 7 report at each prompt. RMUX records that report per pane and relays the active pane's path to SonicTerm, so relative file paths resolve against the correct directory. `#{pane_current_path}` is process metadata and does not replace the shell report. After changing `terminal-features`, reload the config and detach/reattach so the client capabilities are resolved again.
+
+### Shift+Enter
+
+`extended-keys on` lets RMUX request modified-key sequences from SonicTerm. Requesting pane apps receive Shift+Enter as CSI-u; without that request, RMUX 0.10 sends LF (`Ctrl+J`), Claude Code's newline shortcut. Plain Enter remains CR and normal text stays unchanged. This does not change `TERM`, `TERM_PROGRAM`, or the teammate launcher.
+
+After reloading with `prefix + r`, detach with `prefix + d` and reconnect with `rr <name>` so the outer keyboard protocol is negotiated. Detach leaves the pane apps running. A config reload alone does not renegotiate an already attached client's keyboard mode.
 
 ## Session helpers and resume
 
-New SonicTerm tabs open normal shells. The late-loading `zz-rmux.zsh` file provides explicit helpers:
+New SonicTerm tabs open normal shells. On Windows zsh (`msys`, `cygwin`, or `win32`), the late-loading `zz-rmux.zsh` file provides these RMUX helpers. On macOS and Linux the same names run the native tmux helpers instead:
 
 ```sh
 rr main       # create or resume main
@@ -122,6 +129,10 @@ The [complete RMUX keymap](RMUX-Keymap.md) lists all 278 effective bindings acro
 
 The `|`, `-`, and `c` commands use `#{pane_current_path}`, so new panes and windows inherit the active working directory.
 
+Every bottom tab shows `index:icon title`, with one space between the icon and title. The icon follows the window's active pane command: Claude, Copilot, and Vim/Neovim have app icons; zsh and other commands use the unboxed terminal glyph (`U+F120`). It is separate from the name, so plain-text renames keep an icon. Existing `cc`/`gg` icon prefixes are hidden in the displayed title to avoid duplicates.
+
+Use `prefix + n` or `prefix + ,` to edit only the title text. Esc cancels. Submit an empty name to restore that window's default app-based name; it then follows the active command until you set another custom name. The same reset applies to `rmux rename-window ''`. Quotes and format-like text stay literal. RMUX 0.10 doubles typed backslashes in this escaped prompt; use the CLI with a quoted argument when exact backslashes matter. This changes the RMUX bottom tabs, not SonicTerm's outer tab icons.
+
 ## SonicTerm mouse integration
 
 SonicTerm's Copilot guide requires RMUX's conditional root mouse bindings. The tracked config pins them instead of relying on RMUX defaults:
@@ -159,7 +170,7 @@ rmux claude --permission-mode bypassPermissions \
 
 `rmux claude` enables Claude Code's tmux teammate mode and prepends a private, process-scoped `tmux` shim so Claude's teammate commands target RMUX. It does not replace the global `tmux` executable. This repository deliberately does not run `rmux setup tmux-shim`.
 
-Inside RMUX panes, the daemon exports both RMUX-native and tmux-compatible environment names (`RMUX`, `RMUX_PANE`, `TMUX`, and `TMUX_PANE`). The `cc` and `gg` helpers use `rmux rename-window` when `RMUX` is present; they do not call legacy tmux or the WezTerm CLI.
+Inside RMUX panes, the daemon exports both RMUX-native and tmux-compatible environment names (`RMUX`, `RMUX_PANE`, `TMUX`, and `TMUX_PANE`). The `cc` and `gg` helpers check `RMUX` first and use `rmux rename-window`. Only a native tmux pane takes the separate `tmux-store` current-window path. No global shim or WezTerm CLI is used.
 
 Copilot CLI does not yet recognize every RMUX/SonicTerm identity. The repository's `copilot` wrapper and `gg` therefore launch only the Copilot process with `TERM_PROGRAM=WezTerm`, `COLORTERM=truecolor`, and `FORCE_COLOR=3`. This selects Copilot's supported WezTerm/true-color path while the surrounding RMUX pane and all other programs continue to see `TERM_PROGRAM=rmux`.
 
@@ -174,11 +185,15 @@ In addition to tmux-style commands, RMUX exposes automation helpers such as:
 
 Use a named socket for tests and automation so they cannot alter the interactive default server.
 
-## Migration boundaries
+## Coexistence and migration
 
-Upstream retired tmux and WezTerm, while this fork retains its last Catppuccin versions under `config/legacy/` and installs them for compatibility. RMUX and SonicTerm remain the primary stack; tmux plugins and resurrect state remain user-local.
+On macOS and Linux, native tmux replaces RMUX. `rr`, `rl`, `rd`, `rh`, and `rs` run `tt`, `tl`, `td`, `th`, and `ts`, and there is no `rmux` shell function. On Windows they keep their RMUX behavior. Native helpers use separate sockets and state. `tt` refuses to attach from inside a live RMUX session; detach first. Installation does not uninstall `rmux` or stop a server that is already running on a Mac. Full native help is in [Tmux](Tmux.md).
 
-TPM plugins were not ported because RMUX does not guarantee their behavior. SonicTerm is the actively managed outer terminal.
+The shared `exit`/`logout`/empty-prompt Ctrl+D dispatcher checks `RMUX` before `TMUX`. This avoids sending RMUX's compatible environment to a native tmux server. Neither engine auto-attaches. Installation does not reload or stop either live server, and never runs `rs` or `ts` automatically.
+
+`~/.tmux.conf` is managed again from `config/tmux/tmux.conf`. The old root-managed link migrates; user files and foreign links get collision-safe backups, and all earlier tmux backups stay. No TPM or plugin bootstrap is added. Existing `~/.tmux/plugins/` and resurrect snapshots stay untouched. This fork preserves the old tmux profile for explicit use under `config/legacy/tmux/` and keeps its WezTerm compatibility config under `config/legacy/wezterm/`; see [Repository operations](Repository-Operations.md).
+
+The native alternative does not fix RMUX's open [prompt issue #60](https://github.com/D0n9X1n/dot-config/issues/60). SonicTerm remains the managed outer terminal.
 
 ## Verification
 

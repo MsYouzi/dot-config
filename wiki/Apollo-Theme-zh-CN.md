@@ -11,13 +11,15 @@ release 管理的主题管线由当前终端、multiplexer、shell、CLI 状态�
 | 范围 | 来源 |
 |---|---|
 | SonicTerm | 应用于已验证 bundle 的 fork Catppuccin adapter |
-| RMUX | 应用于已验证 bundle 的 fork Catppuccin adapter |
+| RMUX 与原生 tmux | 同一个 fork Catppuccin adapter 分别应用于已验证的 release asset |
 | eza | 应用于已验证 bundle 的 fork Catppuccin adapter |
 | Claude Code UI | 从 fork Catppuccin palette 在本机生成 |
 | Claude 与 Copilot 状态栏 | 从 fork Catppuccin palette 生成一个本机共享 include |
 | Oh My Zsh prompt（可选） | 结构在本仓库；颜色在本机生成；仅通过 `.zshrc` 选择 |
 | fast-syntax-highlighting | 使用它的 Base16 主题和终端 ANSI palette |
 | Copilot CLI UI | 使用内置 `default` 主题和终端 ANSI palette |
+
+原生 tmux 和 RMUX 使用相同的 Catppuccin 配色及状态栏样式：斜边会话和窗口标签、应用图标、简洁时钟，以及 prefix/zoom 标记。两个引擎的官方 release asset 都先验证，再应用共享的 `scripts/theme/catppuccin-mocha-rmux.conf` adapter。原生 tmux 不需要 TPM 或 plugin bootstrap。已有 tmux plugins 和 resurrect 文件保持不动。配置说明见 [Tmux](Tmux-zh-CN.md) 和 [RMUX](RMUX-zh-CN.md)。
 
 Neovim 在另一个仓库中管理。本安装器不会修改 Neovim 配置、plugins 或运行状态。
 
@@ -52,6 +54,7 @@ Bundle hash 包含 release lock 和 adapter code。安装器会先验证每个�
 ```text
 ~/.sonicterm/themes/apollo.toml
 ~/.config/rmux-apollo-theme/apollo-rmux.conf
+~/.config/tmux-apollo-theme/apollo.tmux
 ~/.config/eza-apollo-theme/theme.yml
 ~/.claude/themes/apollo.json
 ```
@@ -66,11 +69,13 @@ Bundle hash 包含 release lock 和 adapter code。安装器会先验证每个�
 
 更新 fork 主题：
 
-1. 编辑 `scripts/theme/` 中的 Catppuccin 输入。JSON 用于生成 Claude、状态栏和 prompt 颜色；SonicTerm TOML、RMUX 配置和 eza YAML 则独立复制，因此共享颜色角色变化时需要更新每个受影响的输入。
+1. 编辑 `scripts/theme/` 中的 Catppuccin 输入。JSON 用于生成 Claude、状态栏和 prompt 颜色；SonicTerm TOML、RMUX/tmux 共享配置和 eza YAML 则独立复制，因此共享颜色角色变化时需要更新每个受影响的输入。
 2. 保持 `scripts/catppuccin-theme.sh` 为接入上游 bundle builder 的唯一 hook。
 3. 运行 `scripts/check.sh all`。
 4. 运行两次 `./install.sh`。
-5. 重载 SonicTerm 和 RMUX，然后启动新的 Claude 与 Copilot session。
+5. 准备好后重载 SonicTerm，再启动新的 Claude 与 Copilot session。
+
+安装不会重载或停止运行中的 tmux 或 RMUX 服务器。新服务器会读取配置。只有显式重载，才会把更改应用到已有服务器；请看 [Tmux](Tmux-zh-CN.md) 和 [RMUX](RMUX-zh-CN.md)。不要用 `ts` 或 `rs` 应用主题。
 
 更新上游 Apollo release pins 时，仍要运行 `scripts/check.sh apollo-online`。不要把 palette 值嵌入 `config/` 下的 active consumers；它们必须继续读取生成的 bundle。
 
@@ -80,4 +85,4 @@ Bundle hash 包含 release lock 和 adapter code。安装器会先验证每个�
 
 手动创建的 Vim、Neovim、VS Code、Windows Terminal 或 WezTerm 主题文件都属于用户，安装器永远不会删除。
 
-请看 [SonicTerm 与 Shell](SonicTerm-and-Shell-zh-CN.md)、[RMUX](RMUX-zh-CN.md)和[开发与发布](Development-and-Releases-zh-CN.md)。
+请看 [SonicTerm 与 Shell](SonicTerm-and-Shell-zh-CN.md)、[Tmux](Tmux-zh-CN.md)、[RMUX](RMUX-zh-CN.md)和[开发与发布](Development-and-Releases-zh-CN.md)。

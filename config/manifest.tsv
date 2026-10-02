@@ -1,7 +1,8 @@
 # type	source	destination
 link	config/git/ignore	.config/git/ignore
 link	config/rmux/rmux.conf	.rmux.conf
-link	config/legacy/tmux/tmux.conf	.tmux.conf
+link	config/tmux/tmux.conf	.tmux.conf
+link	config/legacy/tmux/tmux.conf	.config/dot-configs-legacy/tmux.conf
 link	config/legacy/tmux/tmux-fork.conf	.config/dot-configs-legacy/tmux-fork.conf
 link	config/legacy/wezterm/wezterm.lua	.wezterm.lua
 link	config/legacy/wezterm/palette-fork.lua	.config/dot-configs-legacy/wezterm/palette-fork.lua
@@ -29,12 +30,21 @@ link	config/zsh/claude.zsh	.oh-my-zsh/custom/claude.zsh
 link	config/zsh/copilot.zsh	.oh-my-zsh/custom/copilot.zsh
 link	config/zsh/custom.zsh	.oh-my-zsh/custom/custom.zsh
 link	config/zsh/gg.zsh	.oh-my-zsh/custom/gg.zsh
+link	config/zsh/terminal-keys.zsh	.oh-my-zsh/custom/terminal-keys.zsh
 link	config/zsh/zz-rmux.zsh	.oh-my-zsh/custom/zz-rmux.zsh
+link	config/zsh/zz-tmux.zsh	.oh-my-zsh/custom/zz-tmux.zsh
 link	scripts/rmux/rmux-store	.local/bin/rmux-store
 link	scripts/rmux/store.py	.local/lib/rmux-store/store.py
+link	scripts/tmux/tmux-store	.local/bin/tmux-store
+link	scripts/tmux/store.py	.local/lib/tmux-store/store.py
+link	scripts/mux/workspace.py	.local/lib/mux/workspace.py
 link	config/zsh/themes/apollo.zsh-theme	.oh-my-zsh/custom/themes/apollo.zsh-theme
 link	config/copilot-relay/config.yaml	.copilot-relay/config.yaml
 merge	config/mcp/mcp-shared.json	.config/github-copilot/mcp.json
+link	scripts/launchd/Copilot Relay	.local/libexec/Copilot Relay
 render	config/launchd/com.d0n9x1n.copilot-relay.plist	Library/LaunchAgents/com.d0n9x1n.copilot-relay.plist
+link	scripts/launchd/Copilot Relay Health Check	.local/libexec/Copilot Relay Health Check
 render	config/launchd/com.d0n9x1n.copilot-relay-healthcheck.plist	Library/LaunchAgents/com.d0n9x1n.copilot-relay-healthcheck.plist
+link	scripts/launchd/Weekly npm Cache Cleanup	.local/libexec/Weekly npm Cache Cleanup
 render	config/launchd/com.d0n9x1n.npm-cache-clean.plist	Library/LaunchAgents/com.d0n9x1n.npm-cache-clean.plist
+link	scripts/launchd/vendor_names.py	.local/bin/startup-item-names

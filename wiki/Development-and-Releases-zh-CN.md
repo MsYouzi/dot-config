@@ -40,12 +40,12 @@ config/copilot/statusline.sh
 
 保持相同五行布局、palette 和每目录 Git cache。Provider 字段保持不同：Claude 显示费用；Copilot 显示 premium 请求和自定义 live-subagent rows。
 
-模型家族保持分开：
+保持这些模型路由：
 
-- Sonnet 端默认值通过 `gptModel` 路由。
-- Opus 名称通过 `opusModel` 路由。
+- Opus 名称通过 `opusModel` 路由，保持原生。
+- 原生 Sonnet 和 Haiku 客户端名称通过 `gptModel` 路由到 `gpt-6-astra`。
 
-任务只说一个家族时，不要修改两个。
+不要把 Opus 指向 GPT，也不要用 GPT ID 替换原生 Claude 客户端 ID。受管 effort 保持为 `max`，原生 subagent admission 保持为 `20`。
 
 任何用户可见或行为变化，都要在同一改动中更新对应英文和中文 Wiki 页面。根 README 保持简短。
 
@@ -69,6 +69,7 @@ scripts/check.sh models
 scripts/check.sh mcp
 scripts/check.sh wiki
 scripts/check.sh rmux
+scripts/check.sh tmux
 ```
 
 `models` 断言受管模型选择器：Claude 设置和启动器 wrapper 中的原生客户端 ID、Copilot 自己的 GPT-6 Astra 设置、max effort，以及 relay 独立的 Opus 路由。`mcp` 检查隔离的 Playwright launcher，并确认没有重复的 GitHub 条目或 PAT 模板。`smoke` 还会运行清理隔离/生命周期测试和非阻塞 Playwright proxy 测试。
@@ -77,10 +78,14 @@ scripts/check.sh rmux
 
 CI 使用同一个脚本：
 
-- macOS 安装 RMUX 并运行 smoke checks；
+- macOS 安装原生 tmux 和 RMUX，要求两个引擎都可用，并运行 smoke checks；随后通过符号链接的检出目录，在设置了 `TMUX`、`TMUX_PANE`、`RMUX` 和 `RMUX_PANE` 的情况下再次运行 `scripts/check.sh rmux`；
 - Ubuntu 安装 ShellCheck 并运行 ShellCheck target。
 
 普通检查不会访问网络。`apollo-online` 是维护者专用检查，会下载所有固定的上游文件并验证 SHA-256。每次修改 `scripts/apollo-releases.tsv` 时都要运行它。
+
+`scripts/check.sh` 在运行任何检查前会清除 `TMUX`、`TMUX_PANE`、`RMUX` 和 `RMUX_PANE`，并解析检出目录的物理路径。否则，继承的 `TMUX` 会使 RMUX 拒绝 RMUX 检查启动的嵌套会话；继承的 `RMUX` 会使 helper 检查加载的 zsh `exit` 包装函数执行 detach 而不是退出；经符号链接到达的路径（例如 macOS 的 `/tmp`）也与 RMUX 报告的解析后路径不一致。
+
+修改配置后，先通过 `scripts/check.sh all` 和所需的 `apollo-online` 检查，再运行两次 `./install.sh` 并验证变更的链接。安装不得重载或停止运行中的 tmux 或 RMUX 服务器。不要把 `ts` 或 `rs` 当成安装或检查步骤；两者都是手动重启操作，会结束运行中的程序。
 
 检查失败时不要推送。
 

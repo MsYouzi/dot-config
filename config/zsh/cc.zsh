@@ -33,6 +33,8 @@ function cc {
   print -Pn "\e]1;${title}\a"
   if [[ -n "$RMUX" ]] && (( $+commands[rmux] )); then
     command rmux rename-window -- "$title" 2>/dev/null
+  elif [[ -z "${RMUX:-}" && -n "${TMUX:-}" ]] && (( $+functions[_tmux_store] )); then
+    _tmux_store rename "$title" 2>/dev/null
   fi
   local claude_bin="${commands[claude]:-/usr/local/bin/claude}"
   local cleanup_helper="$HOME/.claude/session-cleanup.sh"

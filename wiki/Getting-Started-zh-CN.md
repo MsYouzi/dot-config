@@ -12,7 +12,9 @@ cd ~/Public/dot-configs
 ./install.sh
 ```
 
-脚本可以安装 Homebrew、RMUX、WezTerm、Claude Code、Copilot CLI、copilot-relay、shell 工具、字体和 oh-my-zsh。它会下载并验证固定的主题输入，应用本 fork 的 Catppuccin adapters，然后链接 `config/manifest.tsv` 中列出的文件。若 tmux 已安装，也会安装 legacy tmux 配置。
+脚本可以安装 Homebrew、原生 tmux、WezTerm、Claude Code、Copilot CLI、copilot-relay、shell 工具、字体和 oh-my-zsh。它会下载并验证固定的主题输入，应用本 fork 的 Catppuccin adapters，然后链接 `config/manifest.tsv` 中列出的文件。
+
+macOS/Linux 默认使用原生 tmux，RMUX 配置保留给 Windows。已有 RMUX 服务器继续运行，会话与状态各自独立。两个配置共享 fork 的 Catppuccin 配色和状态栏样式。原生配置面向 tmux 3.7c。旧 tmux 配置保留供显式选择，不再作为生效的 `~/.tmux.conf`。
 
 第一次主题 bundle 安装需要网络。以后可以复用 `~/.local/share/dot-configs/apollo/` 下已验证的本机 bundle。
 
@@ -48,18 +50,27 @@ Claude Code 第一次启动时，请允许自定义 `dummy` API key。它只是�
 ## 日常命令
 
 ```sh
-rr main          # 创建或恢复 RMUX 会话 main
-rl               # 列出 RMUX 会话
-rd main          # 删除 RMUX 会话 main
+tt main          # 按完整名称连接或创建原生 tmux 会话 main
+tr main          # 交互式 shell 中 tt main 的快捷方式
+tl               # 列出原生 tmux 会话，不启动服务器
+td main          # 按完整名称删除原生 tmux 会话 main
+th               # 原生 tmux 帮助
+rr main          # macOS/Linux 上等同于 tt main；Windows 上用 RMUX
+rl               # macOS/Linux 上等同于 tl
+rd main          # macOS/Linux 上等同于 td main
 claude           # 启动 Claude Code
 cc my-project    # 启动 Claude Code 并设置窗口标题
 copilot          # 启动 Copilot CLI
 gg my-project    # 启动 Copilot CLI 并设置窗口标题
 ```
 
-新的 SonicTerm 标签页是普通 shell。它不会自动加入 RMUX。
+新的 SonicTerm 标签页是普通 shell。两个引擎都不会自动连接。`tt` 拒绝在 RMUX 内连接，请先分离。
 
-在 RMUX 中，下面的操作只会分离，并保留会话：
+`tt`/`tr` 以分离模式创建 tmux 服务器，并在连接前验证父 PID 为 1。已有服务器不受影响。关闭 SonicTerm 后服务器继续运行，不需要先执行 `ts`。
+
+`tr` 只是交互式 zsh 的 shell 函数。一个非选项参数选择 tmux 会话；两个参数或选项形式调用文本工具。`command tr` 始终调用文本工具。
+
+在原生 tmux 或 RMUX 中，下面的操作只会分离，并保留会话：
 
 - `exit`
 - `logout`
@@ -67,9 +78,11 @@ gg my-project    # 启动 Copilot CLI 并设置窗口标题
 - `Ctrl+q`，再按 `d`
 - 关闭已连接的 SonicTerm 标签页
 
-只有想删除会话时才使用 `rd <名称>`。RMUX 把会话放在内存中。重启电脑或 RMUX 守护进程停止后，会话会消失。
+有文字时，Ctrl+D 保持正常编辑行为。两个引擎之外的 shell 退出行为不变。
 
-请看 [RMUX](RMUX-zh-CN.md) 和[完整按键表](RMUX-Keymap-zh-CN.md)。
+用 `td <名称>` 删除原生 tmux 会话。在 macOS 和 Linux 上，`rd <名称>` 作用相同；在 Windows 上它删除 RMUX 会话。分离不是备份：服务器停止或 Mac 重启后，两个引擎都会失去运行中的会话。`ts` 和 `rs` 是手动、需确认的全部会话重启操作，只以新 shell 恢复工作区布局，不恢复运行中的程序或历史。永远不要自动运行它们。
+
+请看 [Tmux](Tmux-zh-CN.md)、[原生 tmux 按键表](Tmux-Keymap-zh-CN.md)、[RMUX](RMUX-zh-CN.md) 和 [RMUX 按键表](RMUX-Keymap-zh-CN.md)。
 
 ## 更新
 
@@ -79,7 +92,9 @@ git pull
 ./install.sh
 ```
 
-安装器是幂等的。正确链接不会改变。不同的文件或链接会先备份，再被替换。
+安装器是幂等的。正确链接不会改变。不同的文件或链接会先备份，再被替换。原生 tmux 迁移会保留全部已有 tmux 备份。
+
+安装器不会重载或停止运行中的 tmux 或 RMUX 服务器。新服务器使用已安装配置；只有自行决定时才重载已有服务器，请看 [Tmux](Tmux-zh-CN.md)。修改受管配置后，运行 `scripts/check.sh all`；release pins 有变化时还需运行 `scripts/check.sh apollo-online`，然后运行两次 `./install.sh`。
 
 ## 检查仓库
 
@@ -94,6 +109,7 @@ scripts/check.sh apollo
 scripts/check.sh instructions
 scripts/check.sh wiki
 scripts/check.sh rmux
+scripts/check.sh tmux
 ```
 
 ## 本机数据留在本机
@@ -108,6 +124,7 @@ scripts/check.sh rmux
 - 本机 MCP secret
 - 生成的 Claude 状态
 - 下载或生成的 Apollo 运行文件
+- 原生 tmux 和 RMUX 的工作区快照或运行状态
 
 带 secret 的 MCP 项目应放在每台 Mac 的 `~/.config/github-copilot/mcp.json`。
 

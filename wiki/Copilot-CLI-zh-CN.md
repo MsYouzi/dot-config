@@ -76,7 +76,7 @@ source ~/.oh-my-zsh/custom/gg.zsh
 
 请移除 `~/.zshrc` 中在 oh-my-zsh 加载后设置的 `alias copilot=...`，否则它会覆盖受管 alias。尤其是旧的仅允许工具和路径的 alias，它缺少 URL 权限，还会绕过终端 wrapper 和更新清理。安装器不会编辑 `~/.zshrc`。
 
-`gg` 会向 SonicTerm 发送 OSC 标题。它在 RMUX 中也会运行 `rmux rename-window`。它不会调用 tmux 或 WezTerm CLI。
+`gg` 会向 SonicTerm 发送 OSC 标题。它先检查 RMUX 并运行 `rmux rename-window`；在原生 tmux 中通过 `tmux-store` 重命名当前 socket 的当前窗口。不使用全局 tmux shim 或 WezTerm CLI。
 
 ## 状态栏
 

@@ -76,7 +76,7 @@ source ~/.oh-my-zsh/custom/gg.zsh
 
 Remove any later `alias copilot=...` from `~/.zshrc`; it would override the managed alias after oh-my-zsh loads. In particular, the old tools-and-paths-only alias omits URL permissions and bypasses the terminal wrapper and update cleanup. The installer does not edit `~/.zshrc`.
 
-`gg` sends OSC title codes to SonicTerm. Inside RMUX, it also runs `rmux rename-window`. It does not call tmux or the WezTerm CLI.
+`gg` sends OSC title codes to SonicTerm. It checks RMUX first and runs `rmux rename-window`; inside native tmux it uses `tmux-store` to rename the current window on the current socket. It does not use a global tmux shim or the WezTerm CLI.
 
 ## Status line
 

@@ -35,7 +35,7 @@ Relay 路由：     gptModel
 上游模型：       gpt-6-astra
 ```
 
-Claude Code 保留原生客户端身份。名称中没有 `opus`，所以 copilot-relay 会把它发送到 `gptModel`。
+Claude Code 保留原生客户端身份。名称不含 `opus`，因此 copilot-relay 会将其发送到 `gptModel`。
 
 其他路由：
 
@@ -44,15 +44,15 @@ Claude Code 保留原生客户端身份。名称中没有 `opus`，所以 copilo
 | `claude-opus-5[1m]` | `opusModel` | `claude-opus-5` |
 | `claude-haiku-4-5-20251001`（Haiku / small-fast） | `gptModel` | `gpt-6-astra` |
 
-客户端名称和上游模型是两层。客户端保留原生 Anthropic ID；上游模型由 relay 决定。不要把 GPT ID 或 `_NAME` / `_DESCRIPTION` 显示覆盖写进 Claude 端设置。
+客户端名称和上游模型是不同层。客户端保留原生 Anthropic ID，由 relay 选择上游模型。不要在 Claude 端设置中写入 GPT ID 或 `_NAME` / `_DESCRIPTION` 显示覆盖。
 
-`[1m]` 后缀让 Claude Code 使用一百万 token 的模型 context 计数；relay 向上游发送规范 ID `gpt-6-astra`。Haiku ID 是已安装 CLI 自身的 small-fast ID，不加 `[1m]` 后缀。默认 Sonnet 路径预计在 750,000 tokens 时触发自动压缩，低于 Astra 的 1M 总窗口内公布的 872,000-token prompt 上限。这并不意味着会保留完整的 1M-token 对话历史。Relay 端默认 thinking 在 `config/copilot-relay/config.yaml` 中设为 `max`；Sonnet 保存的偏好和 shell 启动器也使用 `max`。
+`[1m]` 后缀让 Claude Code 使用一百万 token 的模型 context 计数；relay 向上游发送规范 ID `gpt-6-astra`。Haiku ID 是已安装 CLI 自身的 small-fast ID，不加 `[1m]` 后缀。这不保证保留完整的 1M-token 对话历史；自动压缩取决于模型和输出预算。Relay 端默认 thinking 在 `config/copilot-relay/config.yaml` 中设为 `max`；Sonnet 保存的偏好和 shell 启动器也使用 `max`。
 
-使用本设置前，请先使用支持 GPT-6 Astra 的 relay 构建（见 [copilot-relay issue #57](https://github.com/D0n9X1n/copilot-relay/issues/57)）。修改模型或 effort 默认值时应同时更新 `config/claude/settings.json`、`config/zsh/claude.zsh` 和 `config/zsh/cc.zsh`；wrapper 的 `--model` 和 `--effort` flags 优先于设置文件。Relay 的 `gptModel` 不带后缀，空白的 `webSearchBackend` 也使用 Astra。Opus 路由保持独立。
+使用支持 GPT-6 Astra 的 relay 版本（见 [copilot-relay issue #57](https://github.com/D0n9X1n/copilot-relay/issues/57)）。修改模型和 effort 默认值时应同时更新 `config/claude/settings.json`、`config/zsh/claude.zsh` 和 `config/zsh/cc.zsh`；wrapper 的 `--model` 和 `--effort` flags 优先于保存的设置。Relay 的 `gptModel` 不带后缀，空白 `webSearchBackend` 也使用 Astra。保持 Opus 路由独立。
 
 切换模型前，运行 `copilot` 并输入 `/model`，检查账号可用性和 effort 选项。这是 Copilot 的选择器，不是 Claude Code 的选择器，也不是 relay 本地的 `/v1/models`。`scripts/check.sh all` 通过后，运行两次 `./install.sh` 应用配置，再启动新的 shell 和 Claude Code 会话。安装器会保留健康的 relay 进程；恢复不健康的 relay 时可能中断请求。
 
-Sonnet-facing 槽位通过 `gptModel` 路由到 GPT-6 Astra；Opus 仍使用独立的 `opusModel` 路由。任务只要求修改一条路由时，不要同时修改两条。
+Sonnet 槽位通过 `gptModel` 路由到 GPT-6 Astra；Opus 保留独立的 `opusModel` 路由。任务只涉及一个模型系列时，不要同时修改另一个。Relay 路由和 effort 修改会热重载，无需重启。
 
 ## 主要设置
 
@@ -72,18 +72,21 @@ Sonnet-facing 槽位通过 `gptModel` 路由到 GPT-6 Astra；Opus 仍使用独�
 | `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` | `20` |
 | `statusLine.refreshInterval` | `100` |
 | `theme` | `custom:apollo`；生成的主题资源仍保留在本机 |
+| `CLAUDE_CODE_TMUX_TRUECOLOR` | `"1"`；跳过 Claude 的 tmux 256 色限制 |
 | `autoCompactEnabled` | `true` |
-| `autoCompactWindow` | `770000`，尚未扣除输出 token 预留量 |
-| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `"100"`；默认 Sonnet 输出预算下，目标是在 750,000 tokens 时触发压缩 |
+| `autoCompactWindow` | `770000`；保留的配置窗口，不是实测触发阈值 |
+| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `"100"`；保留的百分比覆盖值 |
 | `feedbackDrafts` | `off` |
 
-`refreshInterval` 必须放在 `statusLine` 里面。Sonnet 的 `modelSettings` 偏好、`MODEL_REASONING_EFFORT` 和两个启动器应统一为 `max`；除非显式提供其他 effort flag，否则启动器的 `--effort` 会覆盖保存的偏好。不管理顶层 `effortLevel`。`max` 是 Claude Code 和 [Copilot CLI](Copilot-CLI-zh-CN.md) 共同的默认推理强度，不是模型名称。
+`refreshInterval` 必须放在 `statusLine` 里面。Sonnet 的 `modelSettings` 偏好、`MODEL_REASONING_EFFORT` 和两个启动器应统一为 `max`。`MODEL_REASONING_EFFORT` 是状态栏回退值，不控制 API effort。除非显式提供其他 effort flag，否则启动器的 `--effort` 会覆盖保存的偏好。不管理顶层 `effortLevel`。`max` 是 Claude Code 和 [Copilot CLI](Copilot-CLI-zh-CN.md) 共同的默认推理强度，不是模型名称。
 
-### 750k 自动压缩目标
+Fork 保留原生 `/model` 选择器，不添加自定义 GPT 行或显示覆盖。不管理 `modelPicker` 或 `availableModels` 覆盖。
 
-配置的窗口不等于压缩触发阈值。Claude Code 2.1.261 先扣除输出 token 预留量，再应用百分比。使用默认原生 Sonnet 输出预留量时，所选设置的计算结果为 `(770000 - 20000) × 100% = 750000`。
+### 自动压缩
 
-按此计算，有效窗口为 750,000 tokens，预期触发阈值为 750,000 tokens；这不是新的运行时测量结果。这是触发阈值，不是对话大小的硬上限；某一轮可能先越过阈值，再执行压缩。其他 CLI 版本、模型、输出预算或 `CLAUDE_CODE_AUTO_COMPACT_WINDOW` 覆盖值可能改变计算结果。编辑源设置后请启动新的 Claude Code 会话。
+配置窗口不等于压缩触发阈值。`autoCompactWindow: 770000` 和 `100` 百分比覆盖值保持不变。按 Claude Code 2.1.261 原生 Sonnet 的输出预留量，计算为 `(770000 - 20000) × 100% = 750000`。这不是新的运行时实测，也不代表其他模型的阈值。
+
+CLI 版本、模型、输出预算和环境覆盖都可能改变压缩时机；某一轮可能先越过触发点再开始压缩。不要把这些设置当作对话大小硬上限或历史保留保证。编辑源设置后请启动新的 Claude Code 会话。
 
 `~/.claude/settings.json` 和 `~/.claude.json` 是不同文件：
 
@@ -126,11 +129,18 @@ PR 合并后，全局规则要求先完成本机清理，再宣布任务完成�
 
 命令行上显式给出 `--model`、`--model=`、`--effort` 或 `--effort=` 时，对应的默认值不再注入；另一个默认值仍然生效。
 
+安装后打开新 shell，或在空闲 shell 提示符中重新加载两个启动器，再启动新的 Claude 会话：
+
+```zsh
+source ~/.oh-my-zsh/custom/claude.zsh
+source ~/.oh-my-zsh/custom/cc.zsh
+```
+
 二进制会拒绝 settings 中的 `permissions.defaultMode: bypassPermissions`。命令行 flag 可以工作。Claude Code 可能在运行时重写 settings，所以 wrapper 也固定模型和 effort。
 
 `settings.json` 是符号链接，因此 CLI 持久化的偏好可能表现为源文件改动。提交前检查 `git diff -- config/claude/settings.json`，只按上面的受支持设置核对变动的键，再运行 `scripts/check.sh all`。不要整份恢复文件，以免丢失其他有意保留的修改。
 
-`cc [标题]` 会设置 SonicTerm 标题，在 RMUX 中重命名窗口，并用相同默认值启动 Claude Code。
+`cc [标题]` 会设置 SonicTerm 标题，并用相同默认值启动 Claude Code。它先检查 RMUX 并直接重命名其窗口。在原生 tmux 中，通过 `tmux-store` 重命名当前 socket 的当前窗口，不添加 `PATH` shim，也不替换真正的全局 `tmux` 可执行文件。请看 [Tmux](Tmux-zh-CN.md)。
 
 只有当 Claude Code 需要创建 agent-team 窗格时才使用 `rmux claude`。RMUX 会给这个进程一个私有 tmux 兼容 shim。不会安装全局 tmux shim。
 
@@ -173,6 +183,12 @@ WakaTime marketplace 指向官方 `wakatime/claude-code-wakatime` Git 仓库。
 
 ## 常见问题
 
+### RMUX 内的颜色不同
+
+Claude Code 2.1.278 在存在 `TMUX` 时会把输出限制为 256 色，即使已设置 `COLORTERM=truecolor` 和 `FORCE_COLOR=3`。RMUX 为兼容性导出 `TMUX`，但支持真彩色。受管的 `env.CLAUDE_CODE_TMUX_TRUECOLOR: "1"` 跳过这个客户端限制，不改动 Apollo 配色。原生 SonicTerm 没有 `TMUX` 时，也没有这个限制需要绕过。
+
+应用设置后请启动新的 Claude Code 进程；已有进程已完成颜色初始化。可以用 `claude --continue` 恢复对话。不要重启 RMUX 服务器：它已经支持真彩色，重启会停止窗格内的应用。重载或重新连接 RMUX 不会重新初始化运行中 Claude 进程的颜色。保留 `TERM=tmux-256color`、`TERM_PROGRAM=rmux` 和 `rmux claude` 私有 teammate shim，不需要修改它们。
+
 ### Claude 每次都显示 onboarding
 
 本机 `~/.claude.json` 缺少 `hasCompletedOnboarding`。在这台 Mac 上完成一次 onboarding。
@@ -183,7 +199,7 @@ WakaTime marketplace 指向官方 `wakatime/claude-code-wakatime` Git 仓库。
 
 ### 小任务出现 `model_not_supported`
 
-保持 Haiku 和 small-fast aliases 都是 `claude-haiku-4-5-20251001`，即已安装 CLI 自身的 small-fast ID。那里不要加 `[1m]` 后缀。同时检查 relay base URL。
+保持 Haiku 和 small-fast aliases 都是 `claude-haiku-4-5-20251001`，即已安装 CLI 自身的 small-fast ID，不要添加 `[1m]` 后缀。检查 `gptModel` 仍是 `gpt-6-astra`，并确认 relay base URL 正确。
 
 ### Relay 重写 settings
 

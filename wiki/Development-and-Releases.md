@@ -40,12 +40,12 @@ config/copilot/statusline.sh
 
 Keep the same five-line shape, palette, and per-directory Git cache. Keep the provider fields different: Claude shows cost; Copilot shows premium requests and custom live-subagent rows.
 
-Keep these model families separate:
+Keep these model routes:
 
-- Sonnet-facing defaults route through `gptModel`.
-- Opus names route through `opusModel`.
+- Opus names route through `opusModel` and stay native.
+- Native Sonnet and Haiku client names route through `gptModel` to `gpt-6-astra`.
 
-Do not change both families when the task names only one.
+Never point Opus at GPT or replace native Claude client ids with GPT ids. Keep managed effort at `max` and native subagent admission at `20`.
 
 For any user-visible or behavior change, update the matching English and Chinese Wiki pages in the same change. Keep the root README short.
 
@@ -69,6 +69,7 @@ scripts/check.sh models
 scripts/check.sh mcp
 scripts/check.sh wiki
 scripts/check.sh rmux
+scripts/check.sh tmux
 ```
 
 `models` asserts the tracked model selectors: native client ids in Claude settings and launcher wrappers, Copilot's own GPT-6 Astra settings, max effort, and the relay's separate Opus route. `mcp` checks the isolated Playwright launcher and confirms there is no duplicate GitHub entry or PAT template. `smoke` also runs the cleanup isolation/lifecycle and nonblocking Playwright proxy tests.
@@ -77,10 +78,14 @@ The status-line layout, cache, and generated palette are shared by both provider
 
 CI uses the same script:
 
-- macOS runs smoke checks and installs RMUX;
+- macOS installs native tmux and RMUX, requires both engines, and runs smoke checks, then reruns `scripts/check.sh rmux` through a symlinked checkout with `TMUX`, `TMUX_PANE`, `RMUX` and `RMUX_PANE` set;
 - Ubuntu installs ShellCheck and runs the ShellCheck target.
 
 Ordinary checks do not access the network. `apollo-online` is a maintainer-only check that downloads every pinned upstream file and verifies its SHA-256. Run it whenever `scripts/apollo-releases.tsv` changes.
+
+`scripts/check.sh` clears `TMUX`, `TMUX_PANE`, `RMUX` and `RMUX_PANE` and resolves the checkout's physical path before it runs any check. Otherwise an inherited `TMUX` would make RMUX refuse the nested sessions that the RMUX checks start, an inherited `RMUX` would make the zsh `exit` wrapper that a helper check sources detach instead of exiting, and a path reached through a symlink, such as macOS `/tmp`, would not match the resolved paths that RMUX reports.
+
+For a config change, pass `scripts/check.sh all` and any required `apollo-online` check, then run `./install.sh` twice and verify the changed links. Installation must not reload or stop live tmux or RMUX servers. Do not run `ts` or `rs` as an install or check step. Both restart helpers are manual and destructive to running programs.
 
 Do not push while checks are red.
 

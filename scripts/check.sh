@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Use the physical path: RMUX reports resolved paths, which a checkout reached through a
+# symlink such as macOS /tmp would not match.
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 cd "$repo_root"
+# An inherited TMUX makes RMUX refuse the nested sessions the checks start, and an inherited RMUX
+# makes the sourced zsh exit wrapper detach instead of exiting, so clear the caller's variables.
+unset RMUX RMUX_PANE TMUX TMUX_PANE
 CHECK_STATE_DIR=""
 CHECK_EVENTS=""
 
@@ -14,6 +19,9 @@ run_bash_syntax() {
     echo "bash -n $file"
     bash -n "$file" || fail=1
   done < <(git ls-files '*.sh' | sort -u)
+  for file in "scripts/launchd/Copilot Relay" "scripts/launchd/Copilot Relay Health Check" "scripts/launchd/Weekly npm Cache Cleanup"; do
+    bash -n "$file" || fail=1
+  done
   [ "$fail" -eq 0 ]
 }
 
@@ -66,7 +74,8 @@ run_shellcheck() {
 
   # shellcheck disable=SC2086
   shellcheck -S error -e SC1090 -e SC1091 -e SC2155 -e SC2148 $files
-  shellcheck -S error scripts/rmux/rmux-store
+  shellcheck -S error scripts/rmux/rmux-store scripts/tmux/tmux-store
+  shellcheck -S error "scripts/launchd/Copilot Relay" "scripts/launchd/Copilot Relay Health Check" "scripts/launchd/Weekly npm Cache Cleanup"
 }
 
 run_zsh_syntax() {
@@ -197,12 +206,12 @@ run_model_default_smoke() {
     (.env | has("ANTHROPIC_DEFAULT_SONNET_MODEL_DESCRIPTION") | not) and
     .env.ANTHROPIC_DEFAULT_HAIKU_MODEL == "claude-haiku-4-5-20251001" and
     .env.ANTHROPIC_SMALL_FAST_MODEL == "claude-haiku-4-5-20251001" and
+    .env.CLAUDE_CODE_TMUX_TRUECOLOR == "1" and
     .env.ANTHROPIC_BASE_URL == "http://127.0.0.1:4142" and
     .env.CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS == "20" and
     .autoCompactEnabled == true and
     .autoCompactWindow == 770000 and
     .env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE == "100" and
-    ((.autoCompactWindow - 20000) * (.env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE | tonumber) / 100) == 750000 and
     .feedbackDrafts == "off" and
     .skipDangerousModePermissionPrompt == true and
     .skipAutoPermissionPrompt == true and
@@ -213,14 +222,14 @@ run_model_default_smoke() {
     .enabledPlugins["swift-lsp@claude-plugins-official"] == true
   ' config/claude/settings.json >/dev/null
 
-  # No GPT identity may leak back into any Claude-facing selector or label.
   if jq -e '
       [(.env | to_entries[] | select(.key | test("^ANTHROPIC_.*MODEL")) | .value),
-       .model]
+       .model,
+       (.modelPicker.options[]? | .model)]
       | map(select(type == "string") | ascii_downcase)
-      | any(test("gpt"))
+      | any(contains("gpt"))
     ' config/claude/settings.json >/dev/null; then
-    echo "config/claude/settings.json carries a GPT identity on a Claude selector" >&2
+    echo "Claude settings must keep native client model ids" >&2
     return 1
   fi
 
@@ -235,7 +244,8 @@ run_model_default_smoke() {
   grep -Eq '^opusModel:[[:space:]]*claude-opus-5$' config/copilot-relay/config.yaml
   grep -Eq '^gptModel:[[:space:]]*gpt-6-astra$' config/copilot-relay/config.yaml
   grep -Eq '^thinkEffort:[[:space:]]*max$' config/copilot-relay/config.yaml
-  grep -Eq '^upstreamTimeoutSeconds:[[:space:]]*600$' config/copilot-relay/config.yaml
+  grep -Eq '^upstreamTimeoutSeconds:[[:space:]]*900$' config/copilot-relay/config.yaml
+  grep -Eq '^claudeUpstreamApi:[[:space:]]*chat-completions$' config/copilot-relay/config.yaml
 
   grep -Fq $'link\tconfig/copilot-relay/config.yaml\t.copilot-relay/config.yaml' config/manifest.tsv
 
@@ -290,17 +300,19 @@ SH
     HOME="$test_root/home" PATH="$fake_bin:$PATH" CLAUDE_CAPTURE="$capture" \
       zsh -c 'source config/zsh/claude.zsh; claude --model opus'
     args="$(sed -n '1p' "$capture")"
-    case "$args" in
-      *'claude-sonnet-5'*) echo "explicit --model was overridden: $args" >&2; exit 1 ;;
-    esac
+    if [ "$args" != "--permission-mode bypassPermissions --effort max --model opus" ]; then
+      echo "explicit --model was overridden or dropped the effort default: $args" >&2
+      exit 1
+    fi
 
     : >"$capture"
     HOME="$test_root/home" PATH="$fake_bin:$PATH" CLAUDE_CAPTURE="$capture" \
       zsh -c 'source config/zsh/claude.zsh; claude --model=opus'
     args="$(sed -n '1p' "$capture")"
-    case "$args" in
-      *'claude-sonnet-5'*) echo "explicit --model= was overridden: $args" >&2; exit 1 ;;
-    esac
+    if [ "$args" != "--permission-mode bypassPermissions --effort max --model=opus" ]; then
+      echo "explicit --model= was overridden or dropped the effort default: $args" >&2
+      exit 1
+    fi
 
     : >"$capture"
     HOME="$test_root/home" PATH="$fake_bin:$PATH" CLAUDE_CAPTURE="$capture" \
@@ -324,6 +336,15 @@ SH
     args="$(sed -n '1p' "$capture")"
     if [ "$args" != "--permission-mode bypassPermissions --model claude-sonnet-5[1m] --effort=high" ]; then
       echo "explicit --effort= was overridden or dropped other defaults: $args" >&2
+      exit 1
+    fi
+
+    : >"$capture"
+    HOME="$test_root/home" PATH="$fake_bin:$PATH" CLAUDE_CAPTURE="$capture" \
+      zsh -c 'source config/zsh/claude.zsh; claude --model opus --effort low --resume smoke-session'
+    args="$(sed -n '1p' "$capture")"
+    if [ "$args" != "--permission-mode bypassPermissions --model opus --effort low --resume smoke-session" ]; then
+      echo "explicit model/effort or remaining arguments were changed: $args" >&2
       exit 1
     fi
 
@@ -466,12 +487,15 @@ run_global_instructions_smoke() {
     grep -Fq 'root README' "$file"
     grep -Fq 'globally synced' "$file"
     grep -Fq 'repo-only' "$file"
-    grep -Fq 'claude-sonnet-5' "$file"
+    grep -Fq 'claude-sonnet-5[1m]' "$file"
     grep -Fq 'claude-haiku-4-5-20251001' "$file"
     grep -Fq 'gptModel' "$file"
     grep -Fq 'gpt-6-astra' "$file"
     grep -Fq 'claude-opus-5' "$file"
-    grep -Fq 'display override' "$file"
+    grep -Fq 'Never put a GPT id' "$file"
+    grep -Fq 'managed effort is `max`' "$file"
+    grep -Fq 'native subagent admission is `20`' "$file"
+    grep -Fq 'Windows uses RMUX; macOS and Linux use native tmux' "$file"
     lines="$(wc -l <"$file" | tr -d ' ')"
     [ "$lines" -le 60 ] || {
       echo "$file must stay short" >&2
@@ -589,6 +613,10 @@ run_wiki_smoke() {
     wiki/RMUX-zh-CN.md
     wiki/RMUX-Keymap.md
     wiki/RMUX-Keymap-zh-CN.md
+    wiki/Tmux.md
+    wiki/Tmux-zh-CN.md
+    wiki/Tmux-Keymap.md
+    wiki/Tmux-Keymap-zh-CN.md
     wiki/SonicTerm-and-Shell.md
     wiki/SonicTerm-and-Shell-zh-CN.md
     wiki/Services-and-Automation.md
@@ -788,14 +816,16 @@ run_manifest_smoke() {
     trap 'rm -rf "$test_root"' EXIT
     test_repo="$test_root/repo"
     test_home="$test_root/home"
-    mkdir -p "$test_repo/config/rmux" "$test_repo/config/claude" \
+    mkdir -p "$test_repo/config/rmux" "$test_repo/config/tmux" "$test_repo/config/claude" \
       "$test_repo/config/copilot" "$test_home/.claude" "$test_home/.copilot"
+    printf 'new tmux\n' >"$test_repo/config/tmux/tmux.conf"
     printf 'new rmux\n' >"$test_repo/config/rmux/rmux.conf"
     printf 'new claude\n' >"$test_repo/config/claude/settings.json"
     printf 'new copilot\n' >"$test_repo/config/copilot/settings.json"
     cat >"$test_repo/config/manifest.tsv" <<'TSV'
 # type	source	destination
 link	config/rmux/rmux.conf	.rmux.conf
+link	config/tmux/tmux.conf	.tmux.conf
 link	config/claude/settings.json	.claude/settings.json
 link	config/copilot/settings.json	.copilot/settings.json
 TSV
@@ -809,6 +839,9 @@ TSV
     [ "$(old_source_for_destination .copilot/cleanup-legacy.sh)" = "$test_repo/copilot/cleanup-legacy.sh" ]
 
     ln -s "$test_repo/.rmux.conf" "$test_home/.rmux.conf"
+    printf 'user tmux\n' >"$test_home/.tmux.conf"
+    printf 'older backup\n' >"$test_home/.tmux.conf.bak.19990101000000"
+    printf 'same timestamp backup\n' >"$test_home/.tmux.conf.bak.20000101000000"
     printf 'user settings\n' >"$test_home/.claude/settings.json"
     foreign="$test_root/foreign-copilot.json"
     printf 'foreign\n' >"$foreign"
@@ -816,6 +849,10 @@ TSV
 
     link_manifest_files
     [ "$(readlink "$test_home/.rmux.conf")" = "$test_repo/config/rmux/rmux.conf" ]
+    [ "$(readlink "$test_home/.tmux.conf")" = "$test_repo/config/tmux/tmux.conf" ]
+    grep -Fxq 'older backup' "$test_home/.tmux.conf.bak.19990101000000"
+    grep -Fxq 'same timestamp backup' "$test_home/.tmux.conf.bak.20000101000000"
+    grep -Fxq 'user tmux' "$test_home/.tmux.conf.bak.20000101000000.1"
     [ "$(readlink "$test_home/.claude/settings.json")" = "$test_repo/config/claude/settings.json" ]
     grep -Fq 'user settings' "$test_home/.claude/settings.json.bak.20000101000000"
     [ "$(readlink "$test_home/.copilot/settings.json.bak.20000101000000")" = "$foreign" ]
@@ -825,6 +862,16 @@ TSV
     link_manifest_files
     after="$(find "$test_home" -name '*.bak.*' -type f -o -name '*.bak.*' -type l | sort)"
     [ "$before" = "$after" ]
+
+    rm "$test_home/.tmux.conf"
+    ln -s "$test_repo/.tmux.conf" "$test_home/.tmux.conf"
+    link_manifest_files
+    [ "$(readlink "$test_home/.tmux.conf")" = "$test_repo/config/tmux/tmux.conf" ]
+    rm "$test_home/.tmux.conf"
+    ln -s "$foreign" "$test_home/.tmux.conf"
+    link_manifest_files
+    [ "$(readlink "$test_home/.tmux.conf.bak.20000101000000.2")" = "$foreign" ]
+    grep -Fxq 'user tmux' "$test_home/.tmux.conf.bak.20000101000000.1"
 
     printf 'config/claude/settings.json\n' >"$test_repo/config/extra.json"
     cat >"$test_repo/config/manifest.tsv" <<'TSV'
@@ -1018,6 +1065,7 @@ run_structure_smoke() {
 
   [ -f config/manifest.tsv ]
   [ -f config/rmux/rmux.conf ]
+  [ -f config/tmux/tmux.conf ]
   [ -f config/sonicterm/sonicterm.toml ]
   python3 - <<'PY'
 import pathlib
@@ -1025,8 +1073,12 @@ import re
 text = pathlib.Path('config/sonicterm/sonicterm.toml').read_text()
 window = re.search(r'^\[window\]\n(.*?)(?=^\[|\Z)', text, re.M | re.S).group(1)
 assert not re.search(r'^(opacity|blur)\s*=', window, re.M)
+assert re.search(r'^padding_top\s*=\s*2\s*$', window, re.M)
+assert re.search(r'^padding_bottom\s*=\s*2\s*$', window, re.M)
 assert not re.search(r'^\[render\]', text, re.M)
 assert 'keymap = "sonicterm-macos"' in text
+assert re.search(r'^tab_min_width\s*=\s*240\s*$', text, re.M)
+assert re.search(r'^tab_max_width\s*=\s*320\s*$', text, re.M)
 assert 'backdrop = "opaque"' in text and 'opacity = 1.0' in text
 PY
   [ -f config/claude/settings.json ]
@@ -1111,7 +1163,7 @@ printf '%s\n' "$*" >>"$RMUX_CAPTURE"
 SH
     chmod +x "$fake_bin/rmux-store"
     PATH="$fake_bin:/usr/bin:/bin" RMUX_CAPTURE="$capture" zsh -f -c '
-      source config/zsh/zz-rmux.zsh
+      OSTYPE=msys; source config/zsh/zz-rmux.zsh
       rs
       rh
     '
@@ -1120,13 +1172,13 @@ SH
     : >"$capture"
 
     PATH="$fake_bin:/usr/bin:/bin" RMUX_CAPTURE="$capture" zsh -f -c '
-      source config/zsh/zz-rmux.zsh
+      OSTYPE=msys; source config/zsh/zz-rmux.zsh
       rr new >/dev/null
     '
     [ "$(sed -n '1p' "$capture")" = "rr new" ]
 
     RMUX_SESSION_EXISTS=1 PATH="$fake_bin:/usr/bin:/bin" RMUX_CAPTURE="$capture" zsh -f -c '
-      source config/zsh/zz-rmux.zsh
+      OSTYPE=msys; source config/zsh/zz-rmux.zsh
       rr main >/dev/null
       rd main
       rl
@@ -1144,13 +1196,13 @@ SH
 
     exit_status=0
     PATH="$fake_bin:/usr/bin:/bin" RMUX_CAPTURE="$capture" zsh -f -c '
-      source config/zsh/zz-rmux.zsh
+      OSTYPE=msys; source config/zsh/zz-rmux.zsh
       exit 7
     ' || exit_status=$?
     [ "$exit_status" = "7" ]
 
     PATH="$fake_bin:/usr/bin:/bin" RMUX_CAPTURE="$capture" zsh -f -c '
-      source config/zsh/zz-rmux.zsh
+      OSTYPE=msys; source config/zsh/zz-rmux.zsh
       rr >/dev/null 2>&1; [[ $? = 2 ]]
       rr one two >/dev/null 2>&1; [[ $? = 2 ]]
       rd >/dev/null 2>&1; [[ $? = 2 ]]
@@ -1162,13 +1214,35 @@ SH
     grep -Fxq 'client -V' "$capture"
 
     PATH="/usr/bin:/bin" zsh -f -c '
-      source config/zsh/zz-rmux.zsh
+      OSTYPE=msys; source config/zsh/zz-rmux.zsh
       rr main >/dev/null 2>&1; [[ $? = 127 ]]
       rd main >/dev/null 2>&1; [[ $? = 127 ]]
       rl >/dev/null 2>&1; [[ $? = 127 ]]
       RMUX=socket exit >/dev/null 2>&1; [[ $? = 127 ]]
       RMUX=socket logout >/dev/null 2>&1; [[ $? = 127 ]]
     '
+
+    # macOS and Linux: every rX helper runs its tX twin; no rmux wrapper.
+    cat >"$fake_bin/tmux-store" <<'SH'
+#!/bin/sh
+printf 'tmux-store %s\n' "$*" >>"$RMUX_CAPTURE"
+SH
+    chmod +x "$fake_bin/tmux-store"
+    local ostype
+    for ostype in darwin25.0 linux-gnu; do
+      : >"$capture"
+      PATH="$fake_bin:/usr/bin:/bin" RMUX_CAPTURE="$capture" OSTYPE_UNDER_TEST="$ostype" zsh -f -c '
+        OSTYPE=$OSTYPE_UNDER_TEST
+        source config/zsh/zz-rmux.zsh
+        source config/zsh/zz-tmux.zsh
+        (( ! $+functions[rmux] ))
+        rr main; rl; rd main; rh; rs
+        rr >/dev/null 2>&1; [[ $? = 2 ]]
+        rl extra >/dev/null 2>&1; [[ $? = 2 ]]
+      '
+      diff -u <(printf '%s\n' 'tmux-store attach main' 'tmux-store list' \
+        'tmux-store delete main' 'tmux-store help' 'tmux-store restart') "$capture"
+    done
   )
 
   grep -Fq '_rmux_store rr "$1"' config/zsh/zz-rmux.zsh
@@ -1177,7 +1251,7 @@ SH
   [ "$(grep -Fc '_rmux_store client detach-client' config/zsh/zz-rmux.zsh)" = "3" ]
   grep -Fq "bindkey -M emacs '^D' _rmux_detach_or_delete_char" config/zsh/zz-rmux.zsh
   grep -Fq "bindkey -M viins '^D' _rmux_detach_or_delete_char" config/zsh/zz-rmux.zsh
-  echo "RMUX helpers ok: rr/rd/rl and exit/logout/Ctrl-D detach protection"
+  echo "mux helpers ok: Windows rX uses RMUX; macOS/Linux rX runs tX; detach protection"
 }
 
 run_rmux_keymap_docs_smoke() {
@@ -1233,17 +1307,17 @@ run_retired_config_migration_smoke() {
     other="$test_root/other"
     regular="$test_root/regular"
 
-    ln -s "$test_root/repo/.tmux.conf" "$exact"
-    remove_repo_symlink "$exact" "$test_root/repo/.tmux.conf" "test config" >/dev/null
+    ln -s "$test_root/repo/wezterm/wezterm.lua" "$exact"
+    remove_repo_symlink "$exact" "$test_root/repo/wezterm/wezterm.lua" "test config" >/dev/null
     [ ! -e "$exact" ] && [ ! -L "$exact" ]
-    remove_repo_symlink "$exact" "$test_root/repo/.tmux.conf" "test config" >/dev/null
+    remove_repo_symlink "$exact" "$test_root/repo/wezterm/wezterm.lua" "test config" >/dev/null
 
     ln -s "$test_root/user.conf" "$other"
-    remove_repo_symlink "$other" "$test_root/repo/.tmux.conf" "test config" >/dev/null
+    remove_repo_symlink "$other" "$test_root/repo/wezterm/wezterm.lua" "test config" >/dev/null
     [ -L "$other" ] && [ "$(readlink "$other")" = "$test_root/user.conf" ]
 
     printf 'keep\n' >"$regular"
-    remove_repo_symlink "$regular" "$test_root/repo/.tmux.conf" "test config" >/dev/null
+    remove_repo_symlink "$regular" "$test_root/repo/wezterm/wezterm.lua" "test config" >/dev/null
     grep -Fq 'keep' "$regular"
 
     for retired_source in config/copilot/AGENTS.md copilot/AGENTS.md; do
@@ -1260,17 +1334,18 @@ run_retired_config_migration_smoke() {
 
   grep -Fq '"${repo_root}/config/copilot/AGENTS.md"' install.sh
   grep -Fq '"${repo_root}/copilot/AGENTS.md"' install.sh
-  grep -Fq $'link	config/legacy/tmux/tmux.conf	.tmux.conf' config/manifest.tsv
-  grep -Fq $'link	config/legacy/wezterm/wezterm.lua	.wezterm.lua' config/manifest.tsv
-  grep -Eq '^[[:space:]]+rmux$' install.sh
-  grep -Eq '^[[:space:]]+wezterm$' install.sh
-  if grep -Eq '^[[:space:]]+tmux$' install.sh; then
-    echo "installer unexpectedly installs tmux; legacy config relies on an existing binary" >&2
+  if grep -Eq '^[[:space:]]+rmux$' install.sh; then
+    echo "installer still installs RMUX on macOS; RMUX is Windows-only" >&2
     return 1
   fi
-  if grep -Eq 'command[[:space:]]+(tmux|wezterm)|wezterm cli' \
+  grep -Eq '^[[:space:]]+tmux$' install.sh
+  grep -Eq '^[[:space:]]+wezterm$' install.sh
+  grep -Fq $'link\tconfig/tmux/tmux.conf\t.tmux.conf' config/manifest.tsv
+  grep -Fq $'link\tconfig/legacy/tmux/tmux.conf\t.config/dot-configs-legacy/tmux.conf' config/manifest.tsv
+  grep -Fq $'link\tconfig/legacy/wezterm/wezterm.lua\t.wezterm.lua' config/manifest.tsv
+  if grep -Eq 'command[[:space:]]+wezterm|wezterm cli' \
       config/zsh/cc.zsh config/zsh/gg.zsh; then
-    echo "active launchers still call retired tmux or WezTerm commands" >&2
+    echo "active launchers still call retired WezTerm commands" >&2
     return 1
   fi
   [ -f config/legacy/tmux/tmux.conf ]
@@ -1279,7 +1354,7 @@ run_retired_config_migration_smoke() {
   [ -f config/legacy/wezterm/palette-fork.lua ]
   [ ! -f .tmux.conf ]
   [ ! -f wezterm/wezterm.lua ]
-  echo "legacy tmux/WezTerm configs moved under manifest-managed fork paths"
+  echo "native tmux install and fork legacy config boundaries ok"
 }
 
 run_rmux_smoke() {
@@ -1320,6 +1395,8 @@ RMUX_THEME
     fi
     rmux -L "$socket" source-file config/rmux/rmux.conf
 
+    [ "$(rmux -L "$socket" show-options -sv extended-keys)" = "on" ]
+    [ "$(rmux -L "$socket" show-options -sv extended-keys-format)" = "csi-u" ]
     [ "$(rmux -L "$socket" show-options -gv prefix)" = "C-q" ]
     [ "$(rmux -L "$socket" show-options -gv mouse)" = "on" ]
     [ "$(rmux -L "$socket" show-options -gv history-limit)" = "100000" ]
@@ -1338,15 +1415,32 @@ RMUX_THEME
     [ "$(rmux -L "$socket" show-options -gv status-right)" = ' #{?client_prefix,PREFIX  ,}%H:%M ' ]
     [ "$(rmux -L "$socket" show-window-options -gv window-status-separator)" = " " ]
     rmux -L "$socket" rename-window -t validate shell
+    local icon_format app expected_icon name
+    icon_format="$(rmux -L "$socket" show-options -gv @tab-icon)"
+    for app in claude copilot nvim vim zsh unknown; do
+      case "$app" in
+        claude) expected_icon='' ;;
+        copilot) expected_icon='' ;;
+        nvim|vim) expected_icon='' ;;
+        *) expected_icon='' ;;
+      esac
+      rmux -L "$socket" set -g @test-command "$app"
+      [ "$(rmux -L "$socket" display-message -p -t validate -F "${icon_format//pane_current_command/@test-command}")" = "$expected_icon" ]
+    done
+    for name in ' custom name' ' custom name' 'custom name'; do
+      rmux -L "$socket" rename-window -t validate -- "$name"
+      [ "$(rmux -L "$socket" display-message -p -t validate -F '#{E:@tab-name}')" = 'custom name' ]
+    done
+    rmux -L "$socket" rename-window -t validate shell
     local tab_format inactive_style expected_cap tab_index flags bell activity expected_style expected_background
     tab_index="$(rmux -L "$socket" display-message -p -t validate -F '#I')"
     expected_cap='#[fg=blue,bg=default,nobold]'
-    [ "$(rmux -L "$socket" display-message -p -t validate -F '#{E:window-status-current-format}')" = "${expected_cap}#[bg=blue,fg=black,bold] ${tab_index}:shell ${expected_cap}" ]
+    [ "$(rmux -L "$socket" display-message -p -t validate -F '#{E:window-status-current-format}')" = "${expected_cap}#[bg=blue,fg=black,bold] ${tab_index}: shell ${expected_cap}" ]
     rmux -L "$socket" split-window -d -t validate /bin/sh
     rmux -L "$socket" resize-pane -Z -t validate
-    [ "$(rmux -L "$socket" display-message -p -t validate -F '#{E:window-status-current-format}')" = "${expected_cap}#[bg=blue,fg=black,bold] ${tab_index}:shell ZOOM ${expected_cap}" ]
+    [ "$(rmux -L "$socket" display-message -p -t validate -F '#{E:window-status-current-format}')" = "${expected_cap}#[bg=blue,fg=black,bold] ${tab_index}: shell ZOOM ${expected_cap}" ]
     rmux -L "$socket" resize-pane -Z -t validate
-    [ "$(rmux -L "$socket" display-message -p -t validate -F '#{E:window-status-current-format}')" = "${expected_cap}#[bg=blue,fg=black,bold] ${tab_index}:shell ${expected_cap}" ]
+    [ "$(rmux -L "$socket" display-message -p -t validate -F '#{E:window-status-current-format}')" = "${expected_cap}#[bg=blue,fg=black,bold] ${tab_index}: shell ${expected_cap}" ]
     inactive_style="$(rmux -L "$socket" show-options -gv @tab-inactive-style)"
     [ "$inactive_style" = '#{?window_bell_flag,#{window-status-bell-style},#{?window_activity_flag,#{window-status-activity-style},#{window-status-style}}}' ]
     for flags in 00 01 10 11; do
@@ -1361,7 +1455,7 @@ RMUX_THEME
         10|11) expected_style='bg=red,fg=black,bold'; expected_background=red ;;
       esac
       expected_cap="#[fg=${expected_background},bg=default,nobold]"
-      [ "$(rmux -L "$socket" display-message -p -t validate -F '#{E:window-status-format}')" = "${expected_cap}#[${expected_style}] ${tab_index}:shell ${expected_cap}" ]
+      [ "$(rmux -L "$socket" display-message -p -t validate -F '#{E:window-status-format}')" = "${expected_cap}#[${expected_style}] ${tab_index}: shell ${expected_cap}" ]
     done
     rmux -L "$socket" set -g @tab-inactive-style "$inactive_style"
     [ "$(rmux -L "$socket" show-options -gv status-style)" = "bg=default,fg=default" ]
@@ -1370,7 +1464,7 @@ RMUX_THEME
     [ "$(rmux -L "$socket" show-options -gv set-titles)" = "on" ]
     [ "$(rmux -L "$socket" show-window-options -gv pane-base-index)" = "1" ]
     terminal_features="$(rmux -L "$socket" show-options -gv terminal-features)"
-    printf '%s\n' "$terminal_features" | grep -Fxq 'xterm-256color:RGB:osc7'
+    printf '%s\n' "$terminal_features" | grep -Fxq 'xterm-256color:RGB:osc7:hyperlinks'
 
     keys="$(rmux -L "$socket" list-keys -T prefix)"
     printf '%s\n' "$keys" | grep -Eq 'Tab[[:space:]]+last-window'
@@ -1381,7 +1475,9 @@ RMUX_THEME
     printf '%s\n' "$keys" | grep -Eq '^bind-key[[:space:]]+-T prefix k[[:space:]]+select-pane -U$'
     printf '%s\n' "$keys" | grep -Eq '^bind-key[[:space:]]+-T prefix l[[:space:]]+select-pane -R$'
     printf '%s\n' "$keys" | grep -Fq 'split-window -h -c "#{pane_current_path}"'
-    printf '%s\n' "$keys" | grep -Fxq 'bind-key    -T prefix n       command-prompt -I "#W" "rename-window \"%%\""'
+    for key in n ,; do
+      printf '%s\n' "$keys" | grep -Fxq "bind-key    -T prefix $key       "'command-prompt -F -I "#{E:@tab-name}" "rename-window -t \"#{window_id}\" -- \"%%%%%%\""'
+    done
     printf '%s\n' "$keys" | grep -Fxq "bind-key    -T prefix r       source-file $HOME/.rmux.conf \\; display-message \"RMUX reloaded\""
     root_keys="$(rmux -L "$socket" list-keys -T root)"
     printf '%s\n' "$root_keys" | grep -Fxq 'bind-key -T root MouseDown1Status          select-window -t ='
@@ -1445,7 +1541,28 @@ RMUX_THEME
     [ "$(rmux -L "$socket" list-panes -t main -F '#{pane_id}')" = "$first_pane" ]
   )
 
-  echo "RMUX config/resume ok: C-q profile, Apollo status, OSC 7 path relay, and stable main session across detach"
+  python3 scripts/rmux/test_tab_rename.py
+  python3 scripts/rmux/test_terminal_input.py
+  echo "RMUX config/resume ok: C-q profile, Apollo status, app icons with title spacing, OSC 7 path relay, and stable main session across detach"
+}
+
+run_tmux_smoke() {
+  python3 -B scripts/tmux/test_helpers.py
+  bash -n scripts/tmux/tmux-store
+  if [ "$(uname -s)" = "Darwin" ] && command -v tmux >/dev/null 2>&1; then
+    TMUX_STORE_RUNTIME_TESTS=1 python3 -B -m unittest discover -s scripts/tmux -p 'test_store.py' -v
+  else
+    python3 -B -m unittest discover -s scripts/tmux -p 'test_store.py' -v
+  fi
+  if ! command -v tmux >/dev/null 2>&1; then
+    if [ "${CI:-}" = "true" ]; then
+      echo "tmux is required for CI runtime checks" >&2
+      return 1
+    fi
+    echo "tmux not found; skipping local native runtime check"
+    return 0
+  fi
+  python3 -B scripts/tmux/test_profile.py
 }
 
 run_apollo_smoke() {
@@ -1463,6 +1580,7 @@ run_apollo_smoke() {
   [ ! -f config/sonicterm/themes/wezterm.toml ]
   grep -Fq 'theme = "apollo"' config/sonicterm/sonicterm.toml
   grep -Fq 'apollo-rmux.conf' config/rmux/rmux.conf
+  grep -Fq 'apollo.tmux' config/tmux/tmux.conf
   grep -Fq 'EZA_CONFIG_DIR' config/zsh/custom.zsh
   if grep -En '^[[:space:]]*((export|typeset)[[:space:]]+)?ZSH_THEME=' config/zsh/*.zsh; then
     echo "managed zsh helpers must leave theme selection to .zshrc" >&2
@@ -1479,14 +1597,15 @@ run_apollo_smoke() {
   grep -Fq $'link	scripts/claude/playwright-mcp-proxy.js	.claude/playwright-mcp-proxy.js' config/manifest.tsv
   grep -Fq $'link	config/claude/skills/sync-upstream/SKILL.md	.claude/skills/sync-upstream/SKILL.md' config/manifest.tsv
   grep -Fq $'link	config/claude/skills/sync-upstream/SKILL.md	.copilot/skills/sync-upstream/SKILL.md' config/manifest.tsv
-  jq -e '.theme == "custom:apollo"' config/claude/settings.json >/dev/null
+  jq -e '.theme == "custom:apollo" and .env.CLAUDE_CODE_TMUX_TRUECOLOR == "1"' \
+    config/claude/settings.json >/dev/null
   jq -e '.theme == "default"' config/copilot/settings.json >/dev/null
 
   if grep -En '#[0-9a-fA-F]{6}|38;2;|48;2;' \
       config/claude/statusline.sh \
       config/copilot/statusline.sh \
       config/zsh/themes/apollo.zsh-theme \
-      config/rmux/rmux.conf; then
+      config/rmux/rmux.conf config/tmux/tmux.conf; then
     echo "tracked active theme consumers contain embedded palette colors" >&2
     return 1
   fi
@@ -1555,6 +1674,7 @@ with open(sys.argv[1], "w", encoding="utf-8") as handle:
 PY
   printf 'name = "Apollo"\n' >"$fixtures/apollo.toml"
   printf 'set-option -g status-style "bg=default,fg=default"\n' >"$fixtures/apollo-rmux.conf"
+  printf 'set-option -g status-style "bg=default,fg=default"\n' >"$fixtures/apollo.tmux"
   printf 'colourful: true\n' >"$fixtures/theme.yml"
 
   {
@@ -1562,6 +1682,7 @@ PY
     printf 'palette\traw\texample/apollo-theme\tv1.0.0\tpalette/apollo.json\t%s\n' "$(shasum -a 256 "$fixtures/palette.json" | awk '{print $1}')"
     printf 'sonicterm\trelease\texample/sonicterm-apollo-theme\tv1.0.0\tapollo.toml\t%s\n' "$(shasum -a 256 "$fixtures/apollo.toml" | awk '{print $1}')"
     printf 'rmux\trelease\texample/rmux-apollo-theme\tv1.0.0\tapollo-rmux.conf\t%s\n' "$(shasum -a 256 "$fixtures/apollo-rmux.conf" | awk '{print $1}')"
+    printf 'tmux\trelease\texample/tmux-apollo-theme\tv1.0.0\tapollo.tmux\t%s\n' "$(shasum -a 256 "$fixtures/apollo.tmux" | awk '{print $1}')"
     printf 'eza\trelease\texample/eza-apollo-theme\tv1.0.0\ttheme.yml\t%s\n' "$(shasum -a 256 "$fixtures/theme.yml" | awk '{print $1}')"
   } >"$lock"
 
@@ -1582,6 +1703,7 @@ case "$url" in
   */palette/apollo.json) source_file="$APOLLO_TEST_FIXTURES/palette.json" ;;
   */apollo.toml) source_file="$APOLLO_TEST_FIXTURES/apollo.toml" ;;
   */apollo-rmux.conf) source_file="$APOLLO_TEST_FIXTURES/apollo-rmux.conf" ;;
+  */apollo.tmux) source_file="$APOLLO_TEST_FIXTURES/apollo.tmux" ;;
   */theme.yml) source_file="$APOLLO_TEST_FIXTURES/theme.yml" ;;
   *) exit 22 ;;
 esac
@@ -1649,6 +1771,8 @@ SH
   [ -L "$test_home/.sonicterm/themes/apollo.toml" ]
   grep -Fq 'user theme' "$test_home/.sonicterm/themes/apollo.toml.bak."*
   [ -L "$test_home/.config/rmux-apollo-theme/apollo-rmux.conf" ]
+  [ -L "$test_home/.config/tmux-apollo-theme/apollo.tmux" ]
+  cmp -s "$fixtures/apollo.tmux" "$test_home/.config/tmux-apollo-theme/apollo.tmux"
   [ -L "$test_home/.config/eza-apollo-theme/theme.yml" ]
   [ -L "$test_home/.claude/themes/apollo.json" ]
   jq -e '.keep == true and .theme == "custom:apollo"' "$test_home/.claude.json" >/dev/null
@@ -1733,6 +1857,8 @@ SH
   grep -Fq 'hover_bg = "#181825"' "$fork_home/.sonicterm/themes/apollo.toml"
   grep -Fq 'status-style "bg=#1e1e2e,fg=#cdd6f4"' \
     "$fork_home/.config/rmux-apollo-theme/apollo-rmux.conf"
+  cmp -s "$fork_home/.config/rmux-apollo-theme/apollo-rmux.conf" \
+    "$fork_home/.config/tmux-apollo-theme/apollo.tmux"
   grep -Fq '#89b4fa' "$fork_home/.config/eza-apollo-theme/theme.yml"
   jq -e '.overrides.text == "#cdd6f4" and .overrides.clawd_background == "#11111b"' \
     "$fork_home/.claude/themes/apollo.json" >/dev/null
@@ -1875,9 +2001,13 @@ run_smoke() {
   run_statusline_smoke
   bash -n install.sh
   run_zsh_syntax
+  python3 -B scripts/test-terminal-keys.py
   run_structure_smoke
   run_manifest_smoke
   run_launchd_template_smoke
+  python3 -B scripts/launchd/test_healthcheck.py
+  python3 -B scripts/launchd/test_launcher_names.py
+  python3 -B scripts/launchd/test_vendor_names.py
   run_subagent_smoke
   run_claude_subagent_limit_smoke
   run_claude_cleanup_smoke
@@ -1892,6 +2022,7 @@ run_smoke() {
   run_rmux_keymap_docs_smoke
   run_retired_config_migration_smoke
   run_rmux_smoke
+  run_tmux_smoke
 }
 
 case "${1:-all}" in
@@ -1903,10 +2034,11 @@ case "${1:-all}" in
   mcp) run_mcp_default_smoke ;;
   wiki) run_wiki_smoke; run_pipeline_scripts_smoke; run_rmux_keymap_docs_smoke ;;
   rmux) run_rmux_helpers_smoke; run_rmux_store_tests; run_rmux_keymap_docs_smoke; run_retired_config_migration_smoke; run_rmux_smoke ;;
+  tmux) run_tmux_smoke ;;
   shellcheck) run_shellcheck ;;
   all) run_smoke; run_shellcheck ;;
   *)
-    echo "usage: $0 [smoke|apollo|apollo-online|instructions|models|mcp|wiki|rmux|shellcheck|all]" >&2
+    echo "usage: $0 [smoke|apollo|apollo-online|instructions|models|mcp|wiki|rmux|tmux|shellcheck|all]" >&2
     exit 2
     ;;
 esac

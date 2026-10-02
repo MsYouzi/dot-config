@@ -33,7 +33,7 @@ catppuccin_expected_bundle_sha() {
   case "$id" in
     palette) source="$(catppuccin_palette_file)" ;;
     sonicterm) source="${scripts_root}/theme/catppuccin-mocha.toml" ;;
-    rmux) source="${scripts_root}/theme/catppuccin-mocha-rmux.conf" ;;
+    rmux|tmux) source="${scripts_root}/theme/catppuccin-mocha-rmux.conf" ;;
     eza) source="${scripts_root}/theme/catppuccin-mocha-eza.yml" ;;
     *) return 1 ;;
   esac
@@ -46,15 +46,17 @@ catppuccin_apply_palette() {
   local palette="${bundle}/palette/apollo.json"
   local sonicterm="${bundle}/sonicterm/apollo.toml"
   local rmux="${bundle}/rmux/apollo-rmux.conf"
+  local tmux="${bundle}/tmux/apollo.tmux"
   local eza="${bundle}/eza/theme.yml"
   cp "$(catppuccin_palette_file)" "$palette"
   cp "${scripts_root}/theme/catppuccin-mocha.toml" "$sonicterm"
   cp "${scripts_root}/theme/catppuccin-mocha-rmux.conf" "$rmux"
+  cp "${scripts_root}/theme/catppuccin-mocha-rmux.conf" "$tmux"
   cp "${scripts_root}/theme/catppuccin-mocha-eza.yml" "$eza"
   apollo_validate_palette "$palette" || {
     printf 'Error: fork Catppuccin palette has an unsupported schema.\n' >&2
     return 1
   }
 
-  chmod 644 "$palette" "$sonicterm" "$rmux" "$eza"
+  chmod 644 "$palette" "$sonicterm" "$rmux" "$tmux" "$eza"
 }

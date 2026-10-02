@@ -44,13 +44,15 @@ policy overrides below.
 
 - Accept upstream moves into `config/` and `scripts/` and its retirement of old
   root paths. Do not restore the removed root quick-reference file, old `claude/`
-  sources, or old `themes/apollo/` files. The fork's optional tmux and WezTerm
-  compatibility configs belong only under `config/legacy/`.
+  sources, or old `themes/apollo/` files. Native tmux owns `~/.tmux.conf` on
+  macOS/Linux. Keep the optional legacy tmux profile under `config/legacy/`
+  linked only to `.config/dot-configs-legacy/tmux.conf`; WezTerm compatibility
+  also stays under `config/legacy/`.
 - Port real local changes to their new canonical paths instead of choosing an
   old side wholesale.
 - Preserve `scripts/theme/catppuccin-mocha.*` and
   `scripts/catppuccin-theme.sh`. `install.sh` applies those assets inside the
-  release-managed Apollo bundle, so SonicTerm, RMUX, eza, Claude UI, zsh, and
+  release-managed Apollo bundle, so SonicTerm, RMUX, native tmux, eza, Claude UI, zsh, and
   both status lines remain Catppuccin without embedding colors in active
   consumers.
 - Preserve Claude cleanup files under `scripts/claude/`, their manifest rows,
@@ -83,6 +85,7 @@ grep -Eq '^thinkEffort:[[:space:]]*max$' config/copilot-relay/config.yaml
 grep -Fq 'theme = "apollo"' config/sonicterm/sonicterm.toml
 grep -Fq 'background = "#11111b"' ~/.sonicterm/themes/apollo.toml
 grep -Fq 'status-style "bg=#1e1e2e,fg=#cdd6f4"' ~/.config/rmux-apollo-theme/apollo-rmux.conf
+cmp ~/.config/rmux-apollo-theme/apollo-rmux.conf ~/.config/tmux-apollo-theme/apollo.tmux
 printf '{}' | bash config/claude/statusline.sh | grep -qE '38;2;(205;214;244|249;226;175|137;180;250)'
 printf '{}' | bash config/copilot/statusline.sh | grep -qE '38;2;(205;214;244|249;226;175|137;180;250)'
 ```

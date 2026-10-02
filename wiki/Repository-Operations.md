@@ -51,10 +51,12 @@ The manifest check excludes SonicTerm `*.save.lock` runtime files. Leave these i
 |---|---|
 | `config/git/ignore` | `~/.config/git/ignore` |
 | `config/rmux/rmux.conf` | `~/.rmux.conf` |
-| `config/legacy/tmux/tmux.conf` | `~/.tmux.conf` (fork compatibility) |
+| `config/tmux/tmux.conf` | `~/.tmux.conf` |
+| `config/legacy/tmux/tmux.conf` | `~/.config/dot-configs-legacy/tmux.conf` (optional legacy profile) |
 | `config/legacy/wezterm/wezterm.lua` | `~/.wezterm.lua` (fork compatibility) |
 | `config/sonicterm/**.toml` | matching files under `~/.sonicterm/` |
 | `config/zsh/**` | matching files under `~/.oh-my-zsh/custom/` |
+| `config/zsh/zz-tmux.zsh` | `~/.oh-my-zsh/custom/zz-tmux.zsh` |
 | `config/claude/**` | `~/.claude/` |
 | `config/copilot/**` | `~/.copilot/` |
 | `config/copilot-relay/config.yaml` | `~/.copilot-relay/config.yaml` |
@@ -66,18 +68,21 @@ The manifest check excludes SonicTerm `*.save.lock` runtime files. Leave these i
 | `scripts/claude/session-cleanup.sh` | `~/.claude/session-cleanup.sh` |
 | `scripts/claude/playwright-mcp.sh` | `~/.claude/playwright-mcp.sh` |
 | `scripts/claude/playwright-mcp-proxy.js` | `~/.claude/playwright-mcp-proxy.js` |
+| `scripts/tmux/tmux-store` | `~/.local/bin/tmux-store` |
+| `scripts/tmux/store.py` | `~/.local/lib/tmux-store/store.py` |
+| `scripts/mux/workspace.py` | `~/.local/lib/mux/workspace.py` |
 
 The manifest rejects archived sources. Wiki pages are never installed.
 
 ## External theme assets
 
-Upstream Apollo releases remain checksum-pinned by `scripts/apollo-releases.tsv`. This fork stores Catppuccin palette and adapter inputs under `scripts/theme/`; `scripts/catppuccin-theme.sh` applies them while `install.sh` builds the same verified local set under `~/.local/share/dot-configs/apollo/` and links SonicTerm, RMUX, eza, and Claude to it.
+Upstream Apollo releases remain checksum-pinned by `scripts/apollo-releases.tsv`. This fork stores Catppuccin palette and adapter inputs under `scripts/theme/`; `scripts/catppuccin-theme.sh` applies them while `install.sh` builds the same verified local set under `~/.local/share/dot-configs/apollo/` and links SonicTerm, RMUX, native tmux, eza, and Claude to it.
 
 Generated status-line, shell-prompt, and Claude theme files are local runtime state derived from the verified canonical palette. A failed download or checksum does not replace the active set. See [Apollo theme](Apollo-Theme.md).
 
 ## Safe links
 
-For each `link` row, `install.sh` does this:
+For most `link` rows, `install.sh` does this:
 
 1. Leave the link alone when it already points to the right source.
 2. Remove an old link only when it points to the exact old repo path.
@@ -85,9 +90,11 @@ For each `link` row, `install.sh` does this:
 4. Make the new link.
 5. Keep the newest backup for that destination.
 
+Native tmux links use a non-pruning path. This covers `~/.tmux.conf`, `zz-tmux.zsh`, `tmux-store`, and the tmux-store/shared mux libraries. A user file or foreign link gets a collision-safe backup name with a numeric suffix when needed. All existing backups are kept, even when the managed link is already correct.
+
 A user file is not silently deleted. A foreign symlink is not silently deleted. Both become backups before the managed link is made.
 
-The move from old root paths to `config/` is handled in the same install run.
+The move from old root paths to `config/` is handled in the same install run. The exact old root-managed `~/.tmux.conf` link migrates to `config/tmux/tmux.conf`; it is active again, not retired.
 
 ## Add or change config
 
@@ -137,6 +144,10 @@ Copilot includes `github-mcp-server` and uses its existing GitHub login. Claude 
 
 Claude's local-scope entries live under `projects[].mcpServers` in `~/.claude.json`. They replace same-name user entries; headers are not merged. The MCP import leaves these local entries untouched.
 
+## Multiplexer lifecycle
+
+`tt`/`tr` start new native tmux servers through a detached bootstrap and verify parent PID 1 before attaching. Existing servers are reused without restart or forced reparenting. Closing SonicTerm disconnects the client, not the server. No `ts` is needed to quit; `td` is deliberate session deletion. A crash or reboot can still lose live processes. See [Tmux](Tmux.md) for the full lifecycle and snapshot limits.
+
 ## Local state
 
 These paths are local and are not config sources:
@@ -148,24 +159,27 @@ These paths are local and are not config sources:
 - `~/.copilot-relay/logs/` — relay logs
 - `~/.sonicterm/logs/` — SonicTerm logs
 - SonicTerm save locks and backups
-- `~/.tmux/plugins/` and old resurrect files
+- `~/.local/state/tmux-store/<socket-hash>/` — native tmux workspace state, separate for each socket
+- `~/.local/state/rmux-store/` and `~/.local/share/rmux-store/` — RMUX snapshots and retained client/daemon pairs
+- `~/.tmux/plugins/` and old resurrect files — preserved, not loaded or cleaned up
 
 Local state is not the same as a user global. `~/.claude/CLAUDE.md` and `~/.copilot/copilot-instructions.md` are user globals: links to tracked sources in `config/`, edited here and reinstalled. `~/.claude.json` is local state the tools own. The MCP import replaces only its top-level `mcpServers` field and leaves per-project overrides alone. Other installer steps can update local preferences, such as the selected Apollo theme.
 
 ## Retired links
 
-Upstream retired tmux and WezTerm, but this fork keeps their last customized Catppuccin configurations under `config/legacy/` and installs them through the manifest for compatibility. RMUX and SonicTerm remain the primary path. The installer removes only the retired SonicTerm `wezterm.toml` link when it points to this repo's exact old source; user-owned files and links stay.
+Native tmux is active again through `config/tmux/tmux.conf` and `~/.tmux.conf`. It does not restore the old TPM setup. Existing plugins, resurrect files, and tmux backups stay untouched. The former fork profile remains under `config/legacy/tmux/`, linked to `~/.config/dot-configs-legacy/tmux.conf` for explicit use only. See [Tmux](Tmux.md).
 
-The duplicate `~/.copilot/AGENTS.md` link is also removed only when it points to this repo's current or former managed source. User files and foreign links stay.
+This fork keeps WezTerm compatibility under `config/legacy/wezterm/` and links it to `~/.wezterm.lua`. SonicTerm and native tmux are the primary macOS stack. The installer removes only the retired SonicTerm `wezterm.toml` link when it points to this repo's exact old source; user-owned files and foreign links stay.
 
-The legacy configs are active compatibility files, not the primary terminal stack. New managed files still follow the current manifest rules.
+The duplicate `~/.copilot/AGENTS.md` link is also removed only when it points to this repo's current or former managed source. User files and foreign links stay. New managed files still follow the current manifest rules.
 
 ## Apply and check
 
 ```sh
-./install.sh
-./install.sh
 scripts/check.sh all
+# Also run scripts/check.sh apollo-online when release pins change.
+./install.sh
+./install.sh
 ```
 
 Then check the main links:
@@ -173,6 +187,11 @@ Then check the main links:
 ```sh
 ls -l ~/.rmux.conf ~/.tmux.conf ~/.wezterm.lua ~/.claude/settings.json \
   ~/.copilot/settings.json ~/.copilot-relay/config.yaml ~/.sonicterm/sonicterm.toml
+ls -l ~/.oh-my-zsh/custom/zz-tmux.zsh ~/.local/bin/tmux-store \
+  ~/.local/lib/tmux-store/store.py ~/.local/lib/mux/workspace.py \
+  ~/.config/tmux-apollo-theme/apollo.tmux ~/.config/dot-configs-legacy/tmux.conf
 ```
+
+Installation never reloads or stops a live tmux or RMUX server. New servers read the installed config. Applying it to an existing server is an explicit action; see [Tmux](Tmux.md). Never run `ts` or `rs` automatically.
 
 More service checks are in [Services and automation](Services-and-Automation.md).

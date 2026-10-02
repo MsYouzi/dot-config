@@ -2,7 +2,7 @@
 
 [English](RMUX.md) | 简体中文
 
-本仓库使用 RMUX 0.10.x 作为终端复用器。受管源文件是 `config/rmux/rmux.conf`；`install.sh` 会把它链接到 `~/.rmux.conf`，并在新 Mac 上安装 Homebrew `rmux` formula。
+**平台规则：** Windows 使用 RMUX 0.10.x。macOS 和 Linux 使用[原生 tmux](Tmux-zh-CN.md)。两者使用相同的 Apollo 主题和状态栏样式，会话与状态各自独立。RMUX 源文件是 `config/rmux/rmux.conf`；`install.sh` 会把它链接到 `~/.rmux.conf`。macOS 安装器不再安装 `rmux` formula。
 
 ## RMUX 是什么
 
@@ -36,7 +36,7 @@ $XDG_CONFIG_HOME/rmux/rmux.conf
 ~/.config/rmux/rmux.conf
 ```
 
-只有在没有加载任何原生配置时，RMUX 才可能回退到标准 tmux 配置路径。本仓库刻意避免这种回退：已归档的 tmux 配置包含可执行的 TPM 初始化命令。原生 `~/.rmux.conf` 可以让启动行为保持确定。诊断时也可设置 `RMUX_DISABLE_TMUX_FALLBACK=1` 禁用回退。
+只有在没有加载任何原生配置时，RMUX 才可能回退到标准 tmux 配置路径。本仓库刻意避免这种回退：`~/.tmux.conf` 现在属于原生 tmux，而不是 RMUX。已归档的 tmux 配置还包含可执行的 TPM 初始化命令。原生 `~/.rmux.conf` 让两个引擎保持独立。诊断时也可设置 `RMUX_DISABLE_TMUX_FALLBACK=1` 禁用回退。
 
 RMUX 使用 tmux 命令语法，不是 JSON、YAML 或 TOML。配置可以执行 `run-shell`、条件命令和其他 source 文件，因此必须把它当作可执行代码审查。
 
@@ -53,9 +53,10 @@ RMUX 使用 tmux 命令语法，不是 JSON、YAML 或 TOML。配置可以执行
 | 窗口/窗格编号 | 从 1 开始；关闭窗口后自动重排 |
 | 复制模式 | Vi 按键；`pbcopy` 加 OSC 52 |
 | 状态栏 | 底部单行，由固定的 Apollo RMUX release 设定样式 |
-| 标题 | 禁用自动重命名；向外传播 `#S · #W` |
+| 标题 | 默认禁用自动重命名；空名称为该窗口恢复自动命名；向外传播 `#S · #W` |
 | 终端身份 | `TERM=tmux-256color`；保留 `TERM_PROGRAM=rmux` |
 | 工作目录 | 把活动 pane 的 OSC 7 报告转发给 SonicTerm |
+| 修饰键 | 启用扩展按键；向请求该协议的窗格应用输出 CSI-u |
 
 配置会清除守护进程可能继承的陈旧 `TERMINFO`、`TERMINFO_DIRS` 和 `TERMCAP`，然后设置 `COLORTERM=truecolor` 与 `FORCE_COLOR=3`。它不会清除 RMUX 自己的 `TERM_PROGRAM` 身份。
 
@@ -63,11 +64,17 @@ RMUX 使用 tmux 命令语法，不是 JSON、YAML 或 TOML。配置可以执行
 
 底部状态栏左侧显示红色斜边会话标签和带编号的斜边窗口标签，右侧只显示 `HH:MM` 时钟。会话标签与窗口标签之间、各窗口标签之间均留一个字符的间距。会话名称最多占 19 个显示单元，确保两端斜边可完整放入 24 单元的标签宽度内。活动提醒和响铃颜色仍然可见。Prefix 生效时显示 `PREFIX`，窗口缩放时显示 `ZOOM`。斜边使用与 bufferline 的 `slope` 样式相同的 Powerline 字形（`U+E0BA` 和 `U+E0BC`），终端字体或后备字体须支持它们。不显示完整日期或装饰性时钟图标。
 
-外层 `xterm-256color` 能力包含 `osc7`，并且已启用 `set-titles`。Oh My Zsh 的 `omz_termsupport_cwd` hook 会在每次显示提示符时发出带主机名的 OSC 7 报告。RMUX 按 pane 记录该报告，并把活动 pane 的路径转发给 SonicTerm，因此相对文件路径会按正确目录解析。`#{pane_current_path}` 是进程 metadata，不能代替 shell 报告。修改 `terminal-features` 后，请重载配置并 detach/reattach，让客户端重新解析能力。
+外层 `xterm-256color` 能力包含 `osc7` 与 `hyperlinks`，并且已启用 `set-titles`。`hyperlinks` 声明 SonicTerm 接受 OSC 8 链接；RMUX 0.10 即使没有它也会转发，原生 tmux 则不会。Oh My Zsh 的 `omz_termsupport_cwd` hook 会在每次显示提示符时发出带主机名的 OSC 7 报告。RMUX 按 pane 记录该报告，并把活动 pane 的路径转发给 SonicTerm，因此相对文件路径会按正确目录解析。`#{pane_current_path}` 是进程 metadata，不能代替 shell 报告。修改 `terminal-features` 后，请重载配置并 detach/reattach，让客户端重新解析能力。
+
+### Shift+Enter
+
+`extended-keys on` 让 RMUX 向 SonicTerm 请求带修饰键的按键序列。请求扩展按键的窗格应用收到 CSI-u 格式的 Shift+Enter；没有请求时，RMUX 0.10 发送 LF（`Ctrl+J`），这是 Claude Code 的换行快捷键。普通 Enter 仍为 CR，文字输入不变，也不会修改 `TERM`、`TERM_PROGRAM` 或 teammate 启动器。
+
+用 `prefix + r` 重载后，按 `prefix + d` 分离，再用 `rr <名称>` 连接，以重新协商外层键盘协议。分离不会停止窗格中的应用。只重载配置不会重新协商已连接客户端的键盘模式。
 
 ## 会话助手与恢复
 
-新的 SonicTerm 标签页会打开普通 shell。最后加载的 `zz-rmux.zsh` 提供显式助手：
+新的 SonicTerm 标签页会打开普通 shell。在 Windows zsh（`msys`、`cygwin` 或 `win32`）上，最后加载的 `zz-rmux.zsh` 提供下面的 RMUX 助手。在 macOS 和 Linux 上，同名命令改为运行原生 tmux 助手：
 
 ```sh
 rr main       # 创建或恢复 main
@@ -122,6 +129,10 @@ rs
 
 `|`、`-` 和 `c` 都使用 `#{pane_current_path}`，因此新窗格和新窗口会继承当前工作目录。
 
+每个底部标签都显示 `序号:图标 标题`，图标与标题之间有一个空格。图标随窗口当前窗格的命令变化：Claude、Copilot 和 Vim/Neovim 使用应用图标，zsh 和其他命令使用无边框终端图标（`U+F120`）。图标独立于名称，因此改成纯文字名称后仍有图标。显示标题时会隐藏已有的 `cc`/`gg` 图标前缀，避免重复。
+
+用 `prefix + n` 或 `prefix + ,` 只编辑标题文字。Esc 取消。提交空名称会为该窗口恢复默认的应用名称，随后随当前命令更新，直到再次设置自定义名称。`rmux rename-window ''` 也会触发同样的重置。引号和类似格式表达式的文字保持原样。RMUX 0.10 会在这个转义提示框中把输入的反斜杠加倍；需要精确保留反斜杠时，请使用 CLI 并引用名称参数。此修改只影响 RMUX 底部标签，不改变 SonicTerm 外层标签图标。
+
 ## SonicTerm 鼠标集成
 
 SonicTerm 的 Copilot 指南要求保留 RMUX 的条件式 root mouse bindings。受管配置会明确固定它们，不依赖 RMUX 默认值：
@@ -159,7 +170,7 @@ rmux claude --permission-mode bypassPermissions \
 
 `rmux claude` 会启用 Claude Code 的 tmux teammate mode，并在 Claude 进程的 `PATH` 前加入私有、进程级的 `tmux` shim，使 teammate 命令指向 RMUX。它不会替换系统全局的 `tmux`。本仓库不会运行 `rmux setup tmux-shim`。
 
-RMUX 窗格内同时提供原生变量和 tmux 兼容变量：`RMUX`、`RMUX_PANE`、`TMUX`、`TMUX_PANE`。`cc` 和 `gg` 在检测到 `RMUX` 时执行 `rmux rename-window`；它们不再调用旧 tmux 或 WezTerm CLI。
+RMUX 窗格内同时提供原生变量和 tmux 兼容变量：`RMUX`、`RMUX_PANE`、`TMUX`、`TMUX_PANE`。`cc` 和 `gg` 先检查 `RMUX`，并执行 `rmux rename-window`。只有原生 tmux 窗格才走独立的 `tmux-store` 当前窗口路径。不使用全局 shim 或 WezTerm CLI。
 
 Copilot CLI 尚不能识别所有 RMUX/SonicTerm 终端身份。因此仓库中的 `copilot` wrapper 和 `gg` 只为 Copilot 子进程设置 `TERM_PROGRAM=WezTerm`、`COLORTERM=truecolor` 和 `FORCE_COLOR=3`，使其选择已支持的 WezTerm/真彩色路径。外层 RMUX 窗格及其他程序仍然看到正确的 `TERM_PROGRAM=rmux`。
 
@@ -174,11 +185,15 @@ Copilot CLI 尚不能识别所有 RMUX/SonicTerm 终端身份。因此仓库中�
 
 测试和自动化应使用命名 socket，避免修改交互式默认 server。
 
-## 迁移边界
+## 并存与迁移
 
-上游已停用 tmux 和 WezTerm，但本 fork 在 `config/legacy/` 保留最后一版 Catppuccin 配置，并为兼容性继续安装。RMUX 和 SonicTerm 仍是主要终端栈；tmux plugins 与 resurrect 状态保留在用户本机。
+在 macOS 和 Linux 上，原生 tmux 取代 RMUX。`rr`、`rl`、`rd`、`rh` 和 `rs` 运行 `tt`、`tl`、`td`、`th` 和 `ts`，并且没有 `rmux` shell 函数。在 Windows 上它们保持 RMUX 行为。原生助手使用独立 socket 和状态。`tt` 拒绝从运行中的 RMUX 会话内连接，请先分离。安装不会卸载 `rmux`，也不会停止 Mac 上已在运行的服务器。原生完整帮助见 [Tmux](Tmux-zh-CN.md)。
 
-TPM 插件没有迁移，因为 RMUX 不保证它们的行为。SonicTerm 是当前受管的外层终端。
+共享的 `exit`/`logout`/空提示符 Ctrl+D 分派器先检查 `RMUX`，再检查 `TMUX`，避免把 RMUX 的兼容环境送到原生 tmux 服务器。两个引擎都不会自动连接。安装不会重载或停止任一运行中的服务器，也绝不会自动运行 `rs` 或 `ts`。
+
+`~/.tmux.conf` 重新由 `config/tmux/tmux.conf` 管理。旧根目录受管链接会迁移；用户文件和外部链接先备份，名称不会冲突，所有已有 tmux 备份都会保留。不添加 TPM 或 plugin bootstrap。已有 `~/.tmux/plugins/` 和 resurrect 快照保持不动。本 fork 在 `config/legacy/tmux/` 保留旧 tmux 配置供显式使用，并在 `config/legacy/wezterm/` 保留 WezTerm 兼容配置，见[仓库操作](Repository-Operations-zh-CN.md)。
+
+原生替代方案不修复 RMUX 尚未解决的[提示框问题 #60](https://github.com/D0n9X1n/dot-config/issues/60)。SonicTerm 仍是受管的外层终端。
 
 ## 验证
 

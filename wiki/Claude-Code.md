@@ -46,13 +46,13 @@ Other routes:
 
 Client names and upstream models are separate layers. The client keeps native Anthropic ids; the relay decides the upstream model. Do not write a GPT id, or a `_NAME` / `_DESCRIPTION` display override, into Claude-facing settings.
 
-The `[1m]` suffix keeps Claude Code's one-million-token model context accounting; the relay sends canonical `gpt-6-astra` upstream. The Haiku id is the installed CLI's own small-fast id and takes no `[1m]` suffix. Automatic compaction is expected at 750,000 tokens on the default Sonnet path, below Astra's advertised 872,000-token prompt limit within its 1M total window. This does not retain a full 1M-token conversation history. Relay-side default thinking is `max` in `config/copilot-relay/config.yaml`; the saved Sonnet preference and shell launchers also use `max`.
+The `[1m]` suffix keeps Claude Code's one-million-token model context accounting; the relay sends canonical `gpt-6-astra` upstream. The Haiku id is the installed CLI's own small-fast id and takes no `[1m]` suffix. This does not guarantee a full 1M-token conversation history; automatic compaction depends on model and output budgets. Relay-side default thinking is `max` in `config/copilot-relay/config.yaml`; the saved Sonnet preference and shell launchers also use `max`.
 
-Use a relay build with GPT-6 Astra support before relying on this setup (tracked in [copilot-relay issue #57](https://github.com/D0n9X1n/copilot-relay/issues/57)). Update model or effort defaults in `config/claude/settings.json`, `config/zsh/claude.zsh`, and `config/zsh/cc.zsh` together; the wrappers' `--model` and `--effort` flags override the settings. The relay's `gptModel` stays suffix-free. Its blank `webSearchBackend` also uses Astra. Keep the Opus route separate.
+Use a relay build with GPT-6 Astra support (tracked in [copilot-relay issue #57](https://github.com/D0n9X1n/copilot-relay/issues/57)). Update model and effort defaults in `config/claude/settings.json`, `config/zsh/claude.zsh`, and `config/zsh/cc.zsh` together; the wrappers' `--model` and `--effort` flags override saved settings. The relay's `gptModel` stays suffix-free. Its blank `webSearchBackend` also uses Astra. Keep the Opus route separate.
 
 Run `copilot` and enter `/model` to check account availability and effort choices before changing models. That is Copilot's picker, not Claude Code's picker or the relay's local `/v1/models`. After `scripts/check.sh all` passes, apply through `./install.sh` twice and start a new shell and Claude Code session. The installer leaves a healthy relay running; recovery of an unhealthy relay may interrupt requests.
 
-The Sonnet-facing slot routes to GPT-6 Astra through `gptModel`; Opus stays on its separate `opusModel` route. Do not change both routes when a task names only one.
+The Sonnet-facing slot routes to GPT-6 Astra through `gptModel`; Opus stays on its separate `opusModel` route. Do not change both routes when a task names only one. Relay route and effort changes hot-reload without a restart.
 
 ## Main settings
 
@@ -72,18 +72,21 @@ The Sonnet-facing slot routes to GPT-6 Astra through `gptModel`; Opus stays on i
 | `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` | `20` |
 | `statusLine.refreshInterval` | `100` |
 | `theme` | `custom:apollo`; generated theme assets stay local |
+| `CLAUDE_CODE_TMUX_TRUECOLOR` | `"1"`; skip Claude's tmux 256-color cap |
 | `autoCompactEnabled` | `true` |
-| `autoCompactWindow` | `770000` before the output-token reserve |
-| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `"100"`; targets compaction at 750,000 tokens with the default Sonnet output budget |
+| `autoCompactWindow` | `770000`; retained configured window, not a measured trigger |
+| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `"100"`; retained percentage override |
 | `feedbackDrafts` | `off` |
 
-`refreshInterval` belongs inside `statusLine`. Keep the Sonnet `modelSettings` preference, `MODEL_REASONING_EFFORT`, and both launchers aligned at `max`; their explicit `--effort` flags override the saved preference unless you supply another effort flag. No top-level `effortLevel` is managed. `max` is the shared reasoning-effort default for Claude Code and [Copilot CLI](Copilot-CLI.md), not a model name.
+`refreshInterval` belongs inside `statusLine`. Keep the Sonnet `modelSettings` preference, `MODEL_REASONING_EFFORT`, and both launchers aligned at `max`. `MODEL_REASONING_EFFORT` is a status-line fallback, not an API effort control. The launchers' explicit `--effort` flags override the saved preference unless you supply another effort flag. No top-level `effortLevel` is managed. `max` is the shared reasoning-effort default for Claude Code and [Copilot CLI](Copilot-CLI.md), not a model name.
 
-### 750k automatic-compaction target
+The fork keeps the native `/model` picker without custom GPT rows or display overrides. No `modelPicker` or `availableModels` override is managed.
 
-The configured window is not the compaction trigger. Claude Code 2.1.261 subtracts its output-token reserve before applying the percentage. With the default native Sonnet output reserve, the selected settings calculate to `(770000 - 20000) × 100% = 750000`.
+### Automatic compaction
 
-This calculation gives an effective window of 750,000 tokens and an expected trigger of 750,000 tokens; it is not a fresh runtime measurement. This is a trigger, not a hard transcript-size cap; a turn can cross it before compaction runs. Other CLI versions, models, output budgets, or `CLAUDE_CODE_AUTO_COMPACT_WINDOW` overrides can change the calculation. Start a new Claude Code session after editing the source settings.
+The configured window is not the compaction trigger. `autoCompactWindow: 770000` and the `100` percentage override are retained. With Claude Code 2.1.261's native Sonnet output reserve, the calculation was `(770000 - 20000) × 100% = 750000`. This is not a fresh runtime measurement or a threshold for other models.
+
+CLI version, model, output budgets, and environment overrides can change when compaction runs. A turn can cross a trigger before compaction starts. Do not treat these settings as a hard transcript-size limit or guaranteed retained history. Start a new Claude Code session after editing the source settings.
 
 `~/.claude/settings.json` and `~/.claude.json` are different files:
 
@@ -126,11 +129,18 @@ After a PR merges, the global rules require local cleanup before the task is cal
 
 An explicit `--model`, `--model=`, `--effort`, or `--effort=` on the command line suppresses the matching default; the other default still applies.
 
+Open a new shell after installation, or reload both launchers at an idle shell prompt before starting a new Claude session:
+
+```zsh
+source ~/.oh-my-zsh/custom/claude.zsh
+source ~/.oh-my-zsh/custom/cc.zsh
+```
+
 The binary rejects `permissions.defaultMode: bypassPermissions` in settings. The command-line flag works. The wrapper also pins model and effort because Claude Code can rewrite settings at runtime.
 
 Because `settings.json` is a symlink, CLI-persisted preferences can appear as source changes. Review `git diff -- config/claude/settings.json` before committing, reconcile only the changed keys with the supported settings above, and rerun `scripts/check.sh all`. Do not restore the whole file and lose other intentional edits.
 
-`cc [title]` sets the SonicTerm title, renames the RMUX window when present, and starts Claude Code with the same defaults.
+`cc [title]` sets the SonicTerm title and starts Claude Code with the same defaults. It checks RMUX first and renames its window directly. In native tmux, it uses `tmux-store` to rename the current window on the current socket, without a `PATH` shim. It does not replace the real global `tmux` executable. See [Tmux](Tmux.md).
 
 Use `rmux claude` only when Claude Code should create agent-team panes. RMUX gives that process a private tmux-compatible shim. No global tmux shim is installed.
 
@@ -173,6 +183,12 @@ The WakaTime marketplace points to the official `wakatime/claude-code-wakatime` 
 
 ## Common fixes
 
+### Colors differ inside RMUX
+
+Claude Code 2.1.278 caps color output at 256 colors when `TMUX` is present, even with `COLORTERM=truecolor` and `FORCE_COLOR=3`. RMUX exports `TMUX` for compatibility, but supports truecolor. The managed `env.CLAUDE_CODE_TMUX_TRUECOLOR: "1"` skips that client-side cap and keeps the Apollo palette unchanged. Without `TMUX`, native SonicTerm has no such cap to bypass.
+
+Start a new Claude Code process after applying the setting; an existing process has already initialized its colors. You can use `claude --continue` to resume the conversation. Do not restart the RMUX server: it already supports truecolor, and restarting it stops pane applications. Reloading or reconnecting RMUX does not reinitialize a running Claude process. Keep `TERM=tmux-256color`, `TERM_PROGRAM=rmux`, and the private `rmux claude` teammate shim unchanged.
+
 ### Claude asks for onboarding every time
 
 `hasCompletedOnboarding` is missing from local `~/.claude.json`. Complete onboarding once on that Mac.
@@ -183,7 +199,7 @@ The first prompt was answered no. In local `~/.claude.json`, move `dummy` from `
 
 ### Small jobs get `model_not_supported`
 
-Keep both the Haiku and small-fast aliases set to `claude-haiku-4-5-20251001`, the installed CLI's own small-fast id. Do not add a `[1m]` suffix there. Also check the relay base URL.
+Keep both the Haiku and small-fast aliases set to `claude-haiku-4-5-20251001`, the installed CLI's own small-fast id. Do not add a `[1m]` suffix there. Check that `gptModel` remains `gpt-6-astra` and that the relay base URL is right.
 
 ### Relay rewrites settings
 
