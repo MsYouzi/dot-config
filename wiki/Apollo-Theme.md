@@ -2,31 +2,30 @@
 
 English | [简体中文](Apollo-Theme-zh-CN.md)
 
-Apollo is the shared theme for the active terminal, multiplexer, shell, CLI status lines, and file listings.
+The release-managed theme pipeline is shared by the active terminal, multiplexer, shell, CLI status lines, and file listings. This repo applies Catppuccin Mocha through that pipeline.
 
-The canonical palette and application adapters live in the [Apollo Theme organization](https://github.com/apollo-theme). This repository does not store palette values or generated theme artifacts.
+Upstream pins canonical Apollo releases from the [Apollo Theme organization](https://github.com/apollo-theme). This repo keeps one small tracked Catppuccin Mocha palette plus generated adapter inputs under `scripts/theme/`; generated runtime artifacts remain outside Git.
 
 ## Active surfaces
 
 | Surface | Source |
 |---|---|
-| SonicTerm | Tagged `sonicterm-apollo-theme` release asset |
-| RMUX | Tagged `rmux-apollo-theme` release asset |
-| Native tmux | `apollo-theme/tmux-apollo-theme` v0.1.0 release asset `apollo.tmux` |
-| eza | Tagged `eza-apollo-theme` release asset |
-| Claude Code UI | Generated locally from the tagged canonical palette |
-| Claude and Copilot status lines | One local include generated from the tagged canonical palette |
+| SonicTerm | Fork Catppuccin adapter applied to the verified bundle |
+| RMUX and native tmux | Shared fork Catppuccin adapter applied to each verified release asset |
+| eza | Fork Catppuccin adapter applied to the verified bundle |
+| Claude Code UI | Generated locally from the fork Catppuccin palette |
+| Claude and Copilot status lines | One local include generated from the fork Catppuccin palette |
 | Oh My Zsh prompt (optional) | Structure in this repo; colors generated locally; selected only through `.zshrc` |
 | fast-syntax-highlighting | Its Base16 theme, using the terminal ANSI palette |
 | Copilot CLI UI | Built-in `default` theme, using the terminal ANSI palette |
 
-Native tmux and RMUX use the same Apollo theme and status style: sloped session and window tabs, app icons, a plain clock, and prefix/zoom indicators. Each engine uses its own official release asset. The native tmux asset needs no TPM or plugin bootstrap. Existing tmux plugins and resurrect files stay untouched. See [Tmux](Tmux.md) and [RMUX](RMUX.md) for their profiles.
+Native tmux and RMUX use the same Catppuccin palette and status style: sloped session and window tabs, app icons, a plain clock, and prefix/zoom indicators. Each engine's official release asset is verified before the shared `scripts/theme/catppuccin-mocha-rmux.conf` adapter is applied. Native tmux needs no TPM or plugin bootstrap. Existing tmux plugins and resurrect files stay untouched. See [Tmux](Tmux.md) and [RMUX](RMUX.md) for their profiles.
 
 Neovim is managed in a different repository. This installer does not modify Neovim config, plugins, or runtime state.
 
 ## Release lock
 
-`scripts/apollo-releases.tsv` pins each upstream repository, tag, artifact, and SHA-256. Child projects have independent versions; do not infer their tags from the canonical palette release.
+`scripts/apollo-releases.tsv` still pins each upstream repository, tag, artifact, and SHA-256. `scripts/catppuccin-theme.sh` then replaces the downloaded palette and adapters with the fork-owned files in `scripts/theme/` before validation and generation. The bundle hash includes those fork inputs, so changing any palette file creates a new immutable set.
 
 The installer downloads exact tagged files. It does not follow `main` or query `latest`. An online maintainer check verifies published bytes:
 
@@ -68,23 +67,21 @@ The shared include generates `C_FG_BRIGHT` from the canonical `foregroundBright`
 
 ## Updates
 
-To update Apollo:
+To update the fork theme:
 
-1. Review the new release in its Apollo repository.
-2. Change only that row in `scripts/apollo-releases.tsv`.
-3. Update its SHA-256.
-4. Run `scripts/check.sh apollo-online`.
-5. Run `scripts/check.sh all`.
-6. Run `./install.sh` twice.
-7. Reload SonicTerm when ready, then start new Claude and Copilot sessions.
+1. Edit the Catppuccin inputs in `scripts/theme/`. The JSON drives generated Claude, status-line, and prompt colors; the SonicTerm TOML, shared RMUX/tmux config, and eza YAML are copied independently, so update shared color roles in each affected input.
+2. Keep `scripts/catppuccin-theme.sh` as the only integration hook into the upstream bundle builder.
+3. Run `scripts/check.sh all`.
+4. Run `./install.sh` twice.
+5. Reload SonicTerm when ready, then start new Claude and Copilot sessions.
 
 Installation does not reload or stop live tmux or RMUX servers. A new server reads its config. Apply changes to an existing server only with an explicit reload; see [Tmux](Tmux.md) and [RMUX](RMUX.md). Do not run `ts` or `rs` to apply a theme.
 
-Do not copy colors from upstream into config, scripts, or Wiki pages.
+When updating upstream Apollo release pins, still run `scripts/check.sh apollo-online`. Do not embed palette values in active consumers under `config/`; they must continue to read the generated bundle.
 
 ## Safe cleanup
 
-The old `themes/apollo/` copies are gone. The installer removes the former SonicTerm `wezterm.toml` only when it is the exact symlink previously managed by this repository.
+The old `themes/apollo/` copies are gone. Fork colors now live under `scripts/theme/`, outside the retired path. The installer removes the former SonicTerm `wezterm.toml`, `catppuccin-mocha.toml`, and `~/.tmux.fork.conf` links only when they point exactly to their retired repository sources. User files and foreign links remain untouched.
 
 Manual Vim, Neovim, VS Code, Windows Terminal, or WezTerm theme files are user-owned and are never removed.
 

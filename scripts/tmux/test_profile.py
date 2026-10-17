@@ -368,8 +368,10 @@ class ProfileTests(unittest.TestCase):
         tm.command('rename-session', '-t', tm.format('#{session_id}', tm.pane), 'profile')
         self.assertEqual(tm.option('status-right'), ' #{?client_prefix,PREFIX  ,}%H:%M ')
         self.assertRegex(tm.format('#{T:status-right}'), r'^ \d{2}:\d{2} $')
-        current_cap = f'#[fg=#365b80,bg={bar},nobold]'
-        current = f'{current_cap}#[bg=#365b80,fg=#ffffff,bold] 1: shell'
+        current_style = roles['window-status-current-style']
+        current_bg = re.search(r'bg=([^,]+)', current_style).group(1)
+        current_cap = f'#[fg={current_bg},bg={bar},nobold]'
+        current = f'{current_cap}#[{current_style}] 1: shell'
         self.assertEqual(tm.format('#{E:window-status-current-format}'), f'{current} {current_cap}')
         tm.command('split-window', '-d', '-t', tm.pane, '/bin/sh')
         tm.command('resize-pane', '-Z', '-t', tm.pane)

@@ -2,7 +2,7 @@
 
 [English](Tmux.md) | 简体中文
 
-原生 tmux 是 macOS 和 Linux 上的复用器。[RMUX](RMUX-zh-CN.md) 只用于 Windows。两者使用相同的 Apollo 配色和底部标签样式，服务器、会话和恢复状态各自独立。受管配置面向 tmux 3.7c 和 3.8。`install.sh` 安装 Homebrew tmux，并把 `config/tmux/tmux.conf` 链接到 `~/.tmux.conf`。
+原生 tmux 是 macOS 和 Linux 上的复用器。[RMUX](RMUX-zh-CN.md) 只用于 Windows。两者通过 Apollo bundle 使用相同的 Catppuccin 配色和底部标签样式，服务器、会话和恢复状态各自独立。受管配置面向 tmux 3.7c 和 3.8。`install.sh` 安装 Homebrew tmux，并把 `config/tmux/tmux.conf` 链接到 `~/.tmux.conf`。
 
 ## 启动与重连
 
@@ -36,8 +36,8 @@ ts            # 确认、保存、重启并恢复当前服务器的工作区
 配置保留 RMUX 的可见设计：
 
 - C-q prefix、底部单行状态栏、鼠标支持和 Vi 复制模式。
-- 固定官方 tmux Apollo 主题提供状态栏、边框、消息和复制模式配色。
-- 相同的斜边会话/窗口标签、间距、带编号的应用图标、深蓝底加粗白字的活动标签，以及状态栏底色的非活动标签。
+- `scripts/catppuccin-theme.sh` 在固定官方 tmux 主题上应用 Catppuccin 状态栏、边框、消息和复制模式配色。
+- 相同的斜边会话/窗口标签、间距、带编号的应用图标、高亮活动标签，以及状态栏底色的非活动标签。颜色来自共享的 `scripts/theme/catppuccin-mocha-rmux.conf` adapter，不嵌入生效配置。
 - 图标与标题之间一个空格。图标跟随 Claude、Copilot、Vim/Neovim 或后备终端命令，不依赖自定义标题。
 - `PREFIX`、`ZOOM`、活动/响铃状态和普通 `HH:MM` 时钟。
 - 新窗格和窗口继承当前窗格的工作目录。

@@ -71,7 +71,7 @@ The manifest rejects archived sources. Wiki pages are never installed.
 
 ## External theme assets
 
-Apollo theme files are not stored in Git or listed as manifest sources. `scripts/apollo-releases.tsv` pins exact upstream tags and SHA-256 values. `install.sh` verifies those files, builds a complete local set under `~/.local/share/dot-configs/apollo/`, and links the active SonicTerm, RMUX, native tmux, eza, and Claude theme paths to that set.
+Upstream Apollo releases remain checksum-pinned by `scripts/apollo-releases.tsv`. Catppuccin palette and adapter inputs live under `scripts/theme/`; `scripts/catppuccin-theme.sh` applies them while `install.sh` builds the verified local set under `~/.local/share/dot-configs/apollo/` and links SonicTerm, RMUX, native tmux, eza, and Claude to it.
 
 Generated status-line, shell-prompt, and Claude theme files are local runtime state derived from the verified canonical palette. A failed download or checksum does not replace the active set. See [Apollo theme](Apollo-Theme.md).
 

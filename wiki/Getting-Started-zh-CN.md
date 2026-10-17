@@ -12,11 +12,11 @@ cd ~/Public/dot-configs
 ./install.sh
 ```
 
-脚本可以安装 Homebrew、原生 tmux、Claude Code、Copilot CLI、copilot-relay、shell 工具、字体和 oh-my-zsh。它会下载并验证固定的 Apollo theme releases，构建本机 adapters，然后链接 `config/manifest.tsv` 中列出的文件。
+脚本可以安装 Homebrew、原生 tmux、Claude Code、Copilot CLI、copilot-relay、shell 工具、字体和 oh-my-zsh。它会下载并验证固定的主题输入，应用 Catppuccin adapters，然后链接 `config/manifest.tsv` 中列出的文件。
 
-原生 tmux 和 RMUX 并存，使用相同的 Apollo 主题和状态栏样式。会话与状态各自独立。原生配置面向 tmux 3.7，本机已经安装。
+原生 tmux 和 RMUX 并存，使用相同的 Catppuccin 配色和状态栏样式。会话与状态各自独立。原生配置面向 tmux 3.7，本机已经安装。
 
-第一次 Apollo 安装需要网络。以后可以复用 `~/.local/share/dot-configs/apollo/` 下已验证的本机 bundle。
+第一次主题 bundle 安装需要网络。以后可以复用 `~/.local/share/dot-configs/apollo/` 下已验证的本机 bundle。
 
 完整日志在这里：
 

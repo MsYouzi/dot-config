@@ -84,8 +84,8 @@ class ScopedInstallerTests(unittest.TestCase):
         self.repo = self.root / 'repo & <space> "double" \'single\' | pipe'
         self.home.mkdir()
         self.repo.mkdir()
-        files = ['install.sh', 'scripts/apollo-theme.sh', 'config/manifest.tsv',
-                 'scripts/launchd/clean-npm-caches.sh']
+        files = ['install.sh', 'scripts/apollo-theme.sh', 'scripts/catppuccin-theme.sh',
+                 'config/manifest.tsv', 'scripts/launchd/clean-npm-caches.sh']
         for job, (name, _) in JOBS.items():
             files += [f'config/launchd/com.d0n9x1n.{job}.plist', f'scripts/launchd/{name}']
         for relative in files:

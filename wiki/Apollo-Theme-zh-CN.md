@@ -2,31 +2,30 @@
 
 [English](Apollo-Theme.md) | 简体中文
 
-Apollo 是当前终端、multiplexer、shell、CLI 状态栏和文件列表共享的主题。
+release 管理的主题管线由当前终端、multiplexer、shell、CLI 状态栏和文件列表共享。本仓库通过该管线应用 Catppuccin Mocha。
 
-规范 palette 和应用 adapters 位于 [Apollo Theme organization](https://github.com/apollo-theme)。本仓库不保存 palette 值或生成的主题文件。
+上游从 [Apollo Theme organization](https://github.com/apollo-theme) 固定规范 Apollo releases。本仓库在 `scripts/theme/` 保存一份精简的 Catppuccin Mocha palette 和 adapter 输入；生成的运行时文件仍不进入 Git。
 
 ## 生效范围
 
 | 范围 | 来源 |
 |---|---|
-| SonicTerm | 带 tag 的 `sonicterm-apollo-theme` release asset |
-| RMUX | 带 tag 的 `rmux-apollo-theme` release asset |
-| 原生 tmux | `apollo-theme/tmux-apollo-theme` v0.1.0 release asset `apollo.tmux` |
-| eza | 带 tag 的 `eza-apollo-theme` release asset |
-| Claude Code UI | 从带 tag 的规范 palette 在本机生成 |
-| Claude 与 Copilot 状态栏 | 从规范 palette 生成一个本机共享 include |
+| SonicTerm | 应用于已验证 bundle 的 fork Catppuccin adapter |
+| RMUX 与原生 tmux | 同一个 fork Catppuccin adapter 分别应用于已验证的 release asset |
+| eza | 应用于已验证 bundle 的 fork Catppuccin adapter |
+| Claude Code UI | 从 fork Catppuccin palette 在本机生成 |
+| Claude 与 Copilot 状态栏 | 从 fork Catppuccin palette 生成一个本机共享 include |
 | Oh My Zsh prompt（可选） | 结构在本仓库；颜色在本机生成；仅通过 `.zshrc` 选择 |
 | fast-syntax-highlighting | 使用它的 Base16 主题和终端 ANSI palette |
 | Copilot CLI UI | 使用内置 `default` 主题和终端 ANSI palette |
 
-原生 tmux 和 RMUX 使用相同的 Apollo 主题及状态栏样式：斜边会话和窗口标签、应用图标、简洁时钟，以及 prefix/zoom 标记。两个引擎各用自己的官方 release asset。原生 tmux 主题不需要 TPM 或 plugin bootstrap。已有 tmux plugins 和 resurrect 文件保持不动。配置说明见 [Tmux](Tmux-zh-CN.md) 和 [RMUX](RMUX-zh-CN.md)。
+原生 tmux 和 RMUX 使用相同的 Catppuccin 配色及状态栏样式：斜边会话和窗口标签、应用图标、简洁时钟，以及 prefix/zoom 标记。两个引擎的官方 release asset 都先验证，再应用共享的 `scripts/theme/catppuccin-mocha-rmux.conf` adapter。原生 tmux 不需要 TPM 或 plugin bootstrap。已有 tmux plugins 和 resurrect 文件保持不动。配置说明见 [Tmux](Tmux-zh-CN.md) 和 [RMUX](RMUX-zh-CN.md)。
 
 Neovim 在另一个仓库中管理。本安装器不会修改 Neovim 配置、plugins 或运行状态。
 
 ## Release lock
 
-`scripts/apollo-releases.tsv` 固定每个上游仓库、tag、artifact 和 SHA-256。各子项目版本互相独立；不要根据规范 palette release 推断它们的 tag。
+`scripts/apollo-releases.tsv` 仍固定每个上游仓库、tag、artifact 和 SHA-256。随后 `scripts/catppuccin-theme.sh` 会在验证和生成之前，用 `scripts/theme/` 中 fork 自有的 palette 与 adapters 替换下载内容。Bundle hash 包含这些 fork 输入，因此任何 palette 文件变化都会创建新的不可变 set。
 
 安装器下载精确 tag 文件。它不跟踪 `main`，也不查询 `latest`。维护者可以在线检查发布文件：
 
@@ -68,23 +67,21 @@ Bundle hash 包含 release lock 和 adapter code。安装器会先验证每个�
 
 ## 更新
 
-更新 Apollo：
+更新 fork 主题：
 
-1. 在对应 Apollo 仓库中检查新 release。
-2. 只修改 `scripts/apollo-releases.tsv` 中对应的一行。
-3. 更新 SHA-256。
-4. 运行 `scripts/check.sh apollo-online`。
-5. 运行 `scripts/check.sh all`。
-6. 运行两次 `./install.sh`。
-7. 准备好后重载 SonicTerm，再启动新的 Claude 与 Copilot session。
+1. 编辑 `scripts/theme/` 中的 Catppuccin 输入。JSON 用于生成 Claude、状态栏和 prompt 颜色；SonicTerm TOML、RMUX/tmux 共享配置和 eza YAML 则独立复制，因此共享颜色角色变化时需要更新每个受影响的输入。
+2. 保持 `scripts/catppuccin-theme.sh` 为接入上游 bundle builder 的唯一 hook。
+3. 运行 `scripts/check.sh all`。
+4. 运行两次 `./install.sh`。
+5. 准备好后重载 SonicTerm，再启动新的 Claude 与 Copilot session。
 
 安装不会重载或停止运行中的 tmux 或 RMUX 服务器。新服务器会读取配置。只有显式重载，才会把更改应用到已有服务器；请看 [Tmux](Tmux-zh-CN.md) 和 [RMUX](RMUX-zh-CN.md)。不要用 `ts` 或 `rs` 应用主题。
 
-不要把上游颜色复制到 config、scripts 或 Wiki 页面中。
+更新上游 Apollo release pins 时，仍要运行 `scripts/check.sh apollo-online`。不要把 palette 值嵌入 `config/` 下的 active consumers；它们必须继续读取生成的 bundle。
 
 ## 安全清理
 
-旧 `themes/apollo/` 副本已经删除。只有当原 SonicTerm `wezterm.toml` 是本仓库过去创建的精确 symlink 时，安装器才会删除它。
+旧 `themes/apollo/` 副本已经删除。Fork 颜色现在位于 `scripts/theme/`，不再占用已停用路径。安装器只会在旧 SonicTerm `wezterm.toml`、`catppuccin-mocha.toml` 和 `~/.tmux.fork.conf` 链接精确指向已停用的仓库源路径时移除它们。用户文件和其他来源的链接不会被修改。
 
 手动创建的 Vim、Neovim、VS Code、Windows Terminal 或 WezTerm 主题文件都属于用户，安装器永远不会删除。
 

@@ -71,7 +71,7 @@ type<TAB>source<TAB>home destination
 
 ## 外部主题文件
 
-Apollo 主题文件不保存在 Git 中，也不作为 manifest source。`scripts/apollo-releases.tsv` 固定精确的上游 tag 和 SHA-256。`install.sh` 验证这些文件，在 `~/.local/share/dot-configs/apollo/` 下构建完整本机 set，再把 SonicTerm、RMUX、原生 tmux、eza 和 Claude 的生效主题路径链接到该 set。
+上游 Apollo releases 仍由 `scripts/apollo-releases.tsv` 以 checksum 固定。Catppuccin palette 和 adapter 输入保存在 `scripts/theme/`；`scripts/catppuccin-theme.sh` 在 `install.sh` 构建已验证本机 set 时应用它们，再把 SonicTerm、RMUX、原生 tmux、eza 和 Claude 链接到该 set。
 
 状态栏、shell prompt 和 Claude 主题的生成文件，是从已验证规范 palette 派生的本机运行状态。下载失败或 checksum 不匹配时，不会替换当前 set。请看 [Apollo 主题](Apollo-Theme-zh-CN.md)。
 

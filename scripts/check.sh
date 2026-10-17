@@ -1472,13 +1472,13 @@ RMUX_THEME
     rmux -L "$socket" rename-window -t validate shell
     local tab_format inactive_style expected_cap tab_index flags bell activity expected_style expected_background
     tab_index="$(rmux -L "$socket" display-message -p -t validate -F '#I')"
-    expected_cap='#[fg=#365b80,bg=default,nobold]'
-    [ "$(rmux -L "$socket" display-message -p -t validate -F '#{E:window-status-current-format}')" = "${expected_cap}#[bg=#365b80,fg=#ffffff,bold] ${tab_index}: shell ${expected_cap}" ]
+    expected_cap='#[fg=blue,bg=default,nobold]'
+    [ "$(rmux -L "$socket" display-message -p -t validate -F '#{E:window-status-current-format}')" = "${expected_cap}#[bg=blue,fg=black,bold] ${tab_index}: shell ${expected_cap}" ]
     rmux -L "$socket" split-window -d -t validate /bin/sh
     rmux -L "$socket" resize-pane -Z -t validate
-    [ "$(rmux -L "$socket" display-message -p -t validate -F '#{E:window-status-current-format}')" = "${expected_cap}#[bg=#365b80,fg=#ffffff,bold] ${tab_index}: shell ZOOM ${expected_cap}" ]
+    [ "$(rmux -L "$socket" display-message -p -t validate -F '#{E:window-status-current-format}')" = "${expected_cap}#[bg=blue,fg=black,bold] ${tab_index}: shell ZOOM ${expected_cap}" ]
     rmux -L "$socket" resize-pane -Z -t validate
-    [ "$(rmux -L "$socket" display-message -p -t validate -F '#{E:window-status-current-format}')" = "${expected_cap}#[bg=#365b80,fg=#ffffff,bold] ${tab_index}: shell ${expected_cap}" ]
+    [ "$(rmux -L "$socket" display-message -p -t validate -F '#{E:window-status-current-format}')" = "${expected_cap}#[bg=blue,fg=black,bold] ${tab_index}: shell ${expected_cap}" ]
     inactive_style="$(rmux -L "$socket" show-options -gv @tab-inactive-style)"
     [ "$inactive_style" = '#{?window_bell_flag,#{window-status-bell-style},#{?window_activity_flag,#{window-status-activity-style},#{window-status-style}}}' ]
     for flags in 00 01 10 11; do
@@ -1605,9 +1605,15 @@ run_tmux_smoke() {
 
 run_apollo_smoke() {
   local test_root fixtures fake_bin test_home lock bad_lock first_current curl_count_before curl_count_after out
+  local fork_bundle fork_home
 
   [ -f scripts/apollo-releases.tsv ]
   [ -f scripts/apollo-theme.sh ]
+  [ -f scripts/catppuccin-theme.sh ]
+  [ -f scripts/theme/catppuccin-mocha.json ]
+  [ -f scripts/theme/catppuccin-mocha.toml ]
+  [ -f scripts/theme/catppuccin-mocha-rmux.conf ]
+  [ -f scripts/theme/catppuccin-mocha-eza.yml ]
   [ ! -d themes/apollo ]
   [ ! -f config/sonicterm/themes/wezterm.toml ]
   grep -Fq 'theme = "apollo"' config/sonicterm/sonicterm.toml
@@ -1620,6 +1626,10 @@ run_apollo_smoke() {
   fi
   grep -Fq 'FAST_WORK_DIR' config/zsh/custom.zsh
   grep -Fq $'link\tconfig/zsh/themes/apollo.zsh-theme\t.oh-my-zsh/custom/themes/apollo.zsh-theme' config/manifest.tsv
+  jq -e '.name == "Catppuccin Mocha" and .colors.background == "#11111b" and .terminal.foreground == "#cdd6f4"' \
+    scripts/theme/catppuccin-mocha.json >/dev/null
+  grep -Fq 'source "${scripts_root}/catppuccin-theme.sh"' install.sh
+  grep -Fq 'apollo_customize_bundle' install.sh scripts/apollo-theme.sh
   jq -e '.theme == "custom:apollo" and .env.CLAUDE_CODE_TMUX_TRUECOLOR == "1"' \
     config/claude/settings.json >/dev/null
   jq -e '.theme == "default"' config/copilot/settings.json >/dev/null
@@ -1627,9 +1637,8 @@ run_apollo_smoke() {
   if grep -En '#[0-9a-fA-F]{6}|38;2;|48;2;' \
       config/claude/statusline.sh \
       config/copilot/statusline.sh \
-      config/zsh/themes/apollo.zsh-theme || \
-      grep -hFxv "set -g window-status-current-style 'bg=#365b80,fg=#ffffff,bold'" \
-        config/rmux/rmux.conf config/tmux/tmux.conf | grep -En '#[0-9a-fA-F]{6}|38;2;|48;2;'; then
+      config/zsh/themes/apollo.zsh-theme \
+      config/rmux/rmux.conf config/tmux/tmux.conf; then
     echo "tracked active theme consumers contain embedded palette colors" >&2
     return 1
   fi
@@ -1851,16 +1860,53 @@ SH
   fi
   [ "$first_current" = "$(readlink "$test_home/.local/share/dot-configs/apollo/current")" ]
 
-  out="$(printf '{}' | HOME="$test_home" bash config/claude/statusline.sh)"
+  # Default installs apply the fork's Catppuccin adapters. Custom lock files
+  # remain available for the upstream manager's isolated fixture tests above.
+  fork_home="$test_root/fork-home"
+  mkdir -p "$fork_home/.claude" "$fork_home/.sonicterm/themes" \
+    "$test_root/fork-scripts/theme"
+  printf '{"keep":true}\n' >"$fork_home/.claude.json"
+  cp "$lock" "$test_root/fork-scripts/apollo-releases.tsv"
+  cp scripts/catppuccin-theme.sh "$test_root/fork-scripts/catppuccin-theme.sh"
+  cp scripts/theme/catppuccin-mocha.json "$test_root/fork-scripts/theme/"
+  cp scripts/theme/catppuccin-mocha.toml "$test_root/fork-scripts/theme/"
+  cp scripts/theme/catppuccin-mocha-rmux.conf "$test_root/fork-scripts/theme/"
+  cp scripts/theme/catppuccin-mocha-eza.yml "$test_root/fork-scripts/theme/"
+  (
+    export HOME="$fork_home"
+    export PATH="$fake_bin:$PATH"
+    unset APOLLO_RELEASES_FILE
+    export APOLLO_ROOT="$fork_home/.local/share/dot-configs/apollo"
+    export APOLLO_TEST_FIXTURES="$fixtures"
+    export APOLLO_TEST_CURL_LOG="$test_root/curl.log"
+    export APOLLO_SKIP_FSH=1
+    DOT_CONFIGS_INSTALL_LIB_ONLY=1 source install.sh
+    scripts_root="$test_root/fork-scripts"
+    install_apollo_themes
+  )
+  fork_bundle="$fork_home/.local/share/dot-configs/apollo/current"
+
+  grep -Fq 'background = "#11111b"' "$fork_home/.sonicterm/themes/apollo.toml"
+  grep -Fq 'hover_bg = "#181825"' "$fork_home/.sonicterm/themes/apollo.toml"
+  grep -Fq 'status-style "bg=#1e1e2e,fg=#cdd6f4"' \
+    "$fork_home/.config/rmux-apollo-theme/apollo-rmux.conf"
+  cmp -s "$fork_home/.config/rmux-apollo-theme/apollo-rmux.conf" \
+    "$fork_home/.config/tmux-apollo-theme/apollo.tmux"
+  grep -Fq '#89b4fa' "$fork_home/.config/eza-apollo-theme/theme.yml"
+  jq -e '.overrides.text == "#cdd6f4" and .overrides.clawd_background == "#11111b"' \
+    "$fork_home/.claude/themes/apollo.json" >/dev/null
+
+  out="$(printf '{}' | HOME="$fork_home" bash config/claude/statusline.sh)"
   printf '%s' "$out" | grep -q $'\033\[38;2;'
-  out="$(printf '{}' | HOME="$test_home" CLAUDE_STATUSLINE_NO_COLOR=1 bash config/claude/statusline.sh)"
+  printf '%s' "$out" | grep -qE '38;2;(205;214;244|249;226;175|137;180;250)'
+  out="$(printf '{}' | HOME="$fork_home" CLAUDE_STATUSLINE_NO_COLOR=1 bash config/claude/statusline.sh)"
   if printf '%s' "$out" | grep -q $'\033\['; then
     echo "Claude no-color status line still emits ANSI escapes" >&2
     return 1
   fi
 
   local colors_file payload old_home pct code rows
-  colors_file="$test_home/.local/share/dot-configs/apollo/current/generated/statusline-colors.sh"
+  colors_file="$fork_bundle/generated/statusline-colors.sh"
   grep -Fq "C_FG_BRIGHT=" "$colors_file" || {
     echo "generated statusline colors are missing C_FG_BRIGHT" >&2
     return 1
@@ -1868,38 +1914,41 @@ SH
   (
     # shellcheck disable=SC1090
     . "$colors_file"
-    [ "$C_FG_BRIGHT" = "$(printf '\033[38;2;0;0;8m')" ] || {
+    [ "$C_FG_BRIGHT" = "$(printf '\033[38;2;245;224;220m')" ] || {
       echo "C_FG_BRIGHT was not generated from foregroundBright" >&2
       exit 1
     }
-    [ "$C_FG" = "$(printf '\033[38;2;0;0;5m')" ]
-    [ "$C_FG_DIM" = "$(printf '\033[38;2;0;0;7m')" ]
+    [ "$C_FG" = "$(printf '\033[38;2;205;214;244m')" ]
+    [ "$C_FG_DIM" = "$(printf '\033[38;2;166;173;200m')" ]
+    [ "$C_ORANGE" = "$(printf '\033[38;2;250;179;135m')" ]
+    [ "$CB_ORANGE" = "$(printf '\033[48;2;250;179;135m')" ]
+    [ "$C_BG_FG" = "$(printf '\033[38;2;30;30;46m')" ]
   )
 
   # Selected segments use the bright role for values; labels keep their roles.
-  payload='{"model":{"display_name":"Claude Sonnet 4.5 (max)"},"workspace":{"current_dir":"'"$test_home"'"},"context_window":{"used_percentage":50,"context_window_size":100000}}'
-  out="$(printf '%s' "$payload" | HOME="$test_home" \
+  payload='{"model":{"display_name":"Claude Sonnet 4.5 (max)"},"workspace":{"current_dir":"'"$fork_home"'"},"context_window":{"used_percentage":50,"context_window_size":100000}}'
+  out="$(printf '%s' "$payload" | HOME="$fork_home" \
     COPILOT_STATUSLINE_NO_ICONS=1 \
     COPILOT_STATUSLINE_SEGMENTS='model effort ctx \n path' \
     bash config/copilot/statusline.sh)"
-  printf '%s' "$out" | grep -Fq $'\033[38;2;0;0;9mModel\033[0m \033[38;2;0;0;8mSonnet 4.5\033[0m' || {
+  printf '%s' "$out" | grep -Fq $'\033[38;2;249;226;175mModel\033[0m \033[38;2;245;224;220mSonnet 4.5\033[0m' || {
     echo "Model segment lost the yellow label / bright value styling" >&2
     return 1
   }
-  printf '%s' "$out" | grep -Fq $'\033[38;2;0;0;13mEffort\033[0m \033[38;2;0;0;8mmax\033[0m' || {
+  printf '%s' "$out" | grep -Fq $'\033[38;2;203;166;247mEffort\033[0m \033[38;2;245;224;220mmax\033[0m' || {
     echo "Effort segment lost the bright value styling" >&2
     return 1
   }
-  printf '%s' "$out" | grep -Fq $'\033[38;2;0;0;14mPath\033[0m \033[38;2;0;0;8m~\033[0m' || {
+  printf '%s' "$out" | grep -Fq $'\033[38;2;148;226;213mPath\033[0m \033[38;2;245;224;220m~\033[0m' || {
     echo "Path segment lost the aqua label / bright value styling" >&2
     return 1
   }
   # Capacity suffix and ordinary separators use the dim foreground, not C_DIM.
-  printf '%s' "$out" | grep -Fq $'\033[38;2;0;0;7m/100k\033[0m' || {
+  printf '%s' "$out" | grep -Fq $'\033[38;2;166;173;200m/100k\033[0m' || {
     echo "context capacity is not using the dim foreground role" >&2
     return 1
   }
-  printf '%s' "$out" | grep -Fq $'\033[38;2;0;0;7m │ \033[0m' || {
+  printf '%s' "$out" | grep -Fq $'\033[38;2;166;173;200m │ \033[0m' || {
     echo "ordinary separators are not using the dim foreground role" >&2
     return 1
   }
@@ -1911,17 +1960,17 @@ SH
   # Numeric context boundaries keep green / yellow / red.
   while IFS=' ' read -r pct code; do
     [ -n "$pct" ] || continue
-    out="$(printf '{"context_window":{"used_percentage":%s}}' "$pct" | HOME="$test_home" \
+    out="$(printf '{"context_window":{"used_percentage":%s}}' "$pct" | HOME="$fork_home" \
       COPILOT_STATUSLINE_NO_ICONS=1 COPILOT_STATUSLINE_SEGMENTS='ctx' \
       bash config/copilot/statusline.sh)"
-    printf '%s' "$out" | grep -Fq "$(printf '\033[38;2;0;0;%sm%s%%' "$code" "$pct")" || {
+    printf '%s' "$out" | grep -Fq "$(printf '\033[38;2;%sm%s%%' "$code" "$pct")" || {
       echo "context color boundary changed at ${pct}%" >&2
       return 1
     }
   done <<'BOUNDS'
-49 11
-50 9
-80 10
+49 166;227;161
+50 249;226;175
+80 243;139;168
 BOUNDS
 
   # A file preserves the trailing newline of an empty last row.
@@ -1957,7 +2006,7 @@ BOUNDS
   out="$(printf '%s' "$payload" | HOME="$old_home" \
     COPILOT_STATUSLINE_NO_ICONS=1 COPILOT_STATUSLINE_SEGMENTS='model' \
     bash config/copilot/statusline.sh)"
-  printf '%s' "$out" | grep -Fq $'\033[38;2;0;0;9mModel\033[0m \033[38;2;0;0;5mSonnet 4.5\033[0m' || {
+  printf '%s' "$out" | grep -Fq $'\033[38;2;249;226;175mModel\033[0m \033[38;2;205;214;244mSonnet 4.5\033[0m' || {
     echo "an older color include did not fall back to C_FG" >&2
     return 1
   }
@@ -1968,7 +2017,7 @@ BOUNDS
     return 1
   fi
   out="$(printf '{}' | HOME="$test_home" bash config/claude/statusline.sh)"
-  if printf '%s' "$out" | grep -Fq $'\033[38;2;0;0;8m'; then
+  if printf '%s' "$out" | grep -Fq $'\033[38;2;245;224;220m'; then
     echo "Claude status line started emitting the bright foreground color" >&2
     return 1
   fi

@@ -2,7 +2,7 @@
 
 English | [简体中文](Tmux-zh-CN.md)
 
-Native tmux is the multiplexer on macOS and Linux. [RMUX](RMUX.md) is for Windows only. Both use the same Apollo colors and bottom-tab style, with separate servers, sessions, and recovery state. The managed profile targets tmux 3.7c and 3.8. `install.sh` installs Homebrew tmux and links `config/tmux/tmux.conf` to `~/.tmux.conf`.
+Native tmux is the multiplexer on macOS and Linux. [RMUX](RMUX.md) is for Windows only. Both use the same Catppuccin colors through the Apollo bundle and bottom-tab style, with separate servers, sessions, and recovery state. The managed profile targets tmux 3.7c and 3.8. `install.sh` installs Homebrew tmux and links `config/tmux/tmux.conf` to `~/.tmux.conf`.
 
 ## Start and reconnect
 
@@ -36,8 +36,8 @@ Use `td NAME` only when you intend to stop a session. PID 1 parentage does not p
 The profile keeps RMUX's user-visible design:
 
 - C-q prefix, one bottom status row, mouse support, and Vi copy mode.
-- Apollo status, border, message, and copy-mode colors from the pinned official tmux theme.
-- The same sloped session/window labels, spacing, numbered app icons, dark-blue active tab with bold white text, and inactive tabs on the bar background.
+- Catppuccin status, border, message, and copy-mode colors applied to the pinned official tmux theme by `scripts/catppuccin-theme.sh`.
+- The same sloped session/window labels, spacing, numbered app icons, highlighted active tab, and inactive tabs on the bar background. Colors come from the shared `scripts/theme/catppuccin-mocha-rmux.conf` adapter, not the active config.
 - One space between each app icon and title. Icons follow Claude, Copilot, Vim/Neovim, or the fallback terminal command, not a custom title.
 - `PREFIX`, `ZOOM`, activity and bell states, plus a plain `HH:MM` clock.
 - Splits and new windows inherit the current pane's directory.

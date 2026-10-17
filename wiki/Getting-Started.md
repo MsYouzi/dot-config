@@ -12,11 +12,11 @@ cd ~/Public/dot-configs
 ./install.sh
 ```
 
-The script can install Homebrew, native tmux, Claude Code, Copilot CLI, copilot-relay, shell tools, fonts, and oh-my-zsh. It downloads and verifies the pinned Apollo theme releases, builds local adapters, then links the files listed in `config/manifest.tsv`.
+The script can install Homebrew, native tmux, Claude Code, Copilot CLI, copilot-relay, shell tools, fonts, and oh-my-zsh. It downloads and verifies the pinned theme inputs, applies the Catppuccin adapters, then links the files listed in `config/manifest.tsv`.
 
-Native tmux and RMUX run side by side with the same Apollo theme and status style. They have separate sessions and state. The native profile targets tmux 3.7, already installed on this Mac.
+Native tmux and RMUX run side by side with the same Catppuccin palette and status style. They have separate sessions and state. The native profile targets tmux 3.7, already installed on this Mac.
 
-The first Apollo install needs network access. Later runs can reuse the verified local bundle under `~/.local/share/dot-configs/apollo/`.
+The first theme-bundle install needs network access. Later runs can reuse the verified local bundle under `~/.local/share/dot-configs/apollo/`.
 
 The full log is here:
 
