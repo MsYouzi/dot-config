@@ -7,7 +7,10 @@ set -euo pipefail
 overlay="${DOT_CONFIGS_LOCAL:-$PWD/local}"
 helper="$overlay/zsh/uu.zsh"
 
-shellcheck -S warning "$overlay/check.sh"
+# The macOS smoke runner has no shellcheck; lint only where it exists.
+if command -v shellcheck >/dev/null 2>&1; then
+  shellcheck -S warning "$overlay/check.sh"
+fi
 for file in "$overlay"/zsh/*.zsh; do zsh -n "$file"; done
 
 tmp="$(mktemp -d)"
