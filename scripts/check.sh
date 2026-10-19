@@ -87,7 +87,7 @@ run_shellcheck() {
     return 1
   }
 
-  files="$(find . -path './.git' -prune -o -type f \( \
+  files="$(find . \( -path './.git' -o -path './local' \) -prune -o -type f \( \
     -name '*.bash' \
     -o -name '.bashrc' \
     -o -name 'bashrc' \
@@ -650,6 +650,8 @@ run_wiki_smoke() {
     wiki/Getting-Started-zh-CN.md
     wiki/Repository-Operations.md
     wiki/Repository-Operations-zh-CN.md
+    wiki/Customization.md
+    wiki/Customization-zh-CN.md
     wiki/Claude-Code.md
     wiki/Claude-Code-zh-CN.md
     wiki/Copilot-CLI.md
@@ -837,7 +839,7 @@ run_manifest_smoke() {
       return 1
     }
     config_files="$(find config -type f ! -path 'config/manifest.tsv' \
-      ! -path 'config/sonicterm/*.save.lock' -print | sort)"
+      ! -path 'config/sonicterm/*.save.lock' ! -name '.DS_Store' -print | sort)"
     manifest_config_files="$(grep -Ev '^(#|$)' config/manifest.tsv | cut -f2 | grep '^config/' | sort)"
     [ "$config_files" = "$manifest_config_files" ] || {
       echo "config/ files and manifest sources differ" >&2
@@ -2028,6 +2030,261 @@ BOUNDS
   echo "Apollo release bundle, generated adapters, and safe activation ok"
 }
 
+run_shell_update_smoke() {
+  (
+    local test_root origin seed work custom capture out fake_bin fake_brew test_home claude_dir
+    test_root="$(mktemp -d)"
+    trap 'rm -rf "$test_root"' EXIT
+    export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+    export GIT_AUTHOR_NAME=check GIT_AUTHOR_EMAIL=check@example.com
+    export GIT_COMMITTER_NAME=check GIT_COMMITTER_EMAIL=check@example.com
+    unset DOT_CONFIGS_DIR HOMEBREW_PREFIX
+
+    # uu: a clone behind its upstream fast-forwards, then runs install.sh with the given options.
+    origin="$test_root/origin.git"
+    seed="$test_root/seed"
+    work="$test_root/work"
+    custom="$test_root/home/.oh-my-zsh/custom"
+    capture="$test_root/install-args"
+    git init -q --bare -b main "$origin"
+    git init -q -b main "$seed"
+    mkdir -p "$seed/config/zsh" "$custom"
+    cp config/zsh/uu.zsh "$seed/config/zsh/uu.zsh"
+    printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >"$UU_CAPTURE"\n' >"$seed/install.sh"
+    chmod +x "$seed/install.sh"
+    printf 'one\n' >"$seed/notes.txt"
+    git -C "$seed" add -A
+    git -C "$seed" commit -q -m first
+    git -C "$seed" push -q "$origin" main
+    git clone -q "$origin" "$work"
+    printf 'two\n' >>"$seed/notes.txt"
+    git -C "$seed" commit -q -am second
+    git -C "$seed" push -q "$origin" main
+    ln -s "$work/config/zsh/uu.zsh" "$custom/uu.zsh"
+
+    out="$(UU_CAPTURE="$capture" zsh -f -c 'source "$1"; uu --flag' _ "$custom/uu.zsh")"
+    [ "$(git -C "$work" rev-parse HEAD)" = "$(git -C "$seed" rev-parse HEAD)" ]
+    [ "$(cat "$capture")" = "--flag" ]
+    printf '%s\n' "$out" | grep -Fq 'second'
+    rm -f "$capture"
+    out="$(UU_CAPTURE="$capture" zsh -f -c 'source "$1"; uu' _ "$custom/uu.zsh")"
+    printf '%s\n' "$out" | grep -Fq 'already at'
+    [ -f "$capture" ]
+
+    # uu never runs install.sh from a dirty tree, a detached HEAD, or a branch with no upstream.
+    rm -f "$capture"
+    printf 'local\n' >>"$work/notes.txt"
+    if UU_CAPTURE="$capture" zsh -f -c 'source "$1"; uu' _ "$custom/uu.zsh" 2>/dev/null; then
+      echo "uu ran from a dirty tree" >&2
+      return 1
+    fi
+    git -C "$work" checkout -q -- notes.txt
+    git -C "$work" checkout -q --detach
+    if UU_CAPTURE="$capture" zsh -f -c 'source "$1"; uu' _ "$custom/uu.zsh" 2>/dev/null; then
+      echo "uu ran from a detached HEAD" >&2
+      return 1
+    fi
+    git -C "$work" checkout -q main
+    # A local commit plus a new upstream commit cannot fast-forward; uu must not merge.
+    printf 'mine\n' >"$work/local.txt"
+    git -C "$work" add local.txt
+    git -C "$work" commit -q -m mine
+    printf 'three\n' >>"$seed/notes.txt"
+    git -C "$seed" commit -q -am third
+    git -C "$seed" push -q "$origin" main
+    if UU_CAPTURE="$capture" zsh -f -c 'source "$1"; uu' _ "$custom/uu.zsh" >/dev/null 2>&1; then
+      echo "uu ran after the branch diverged" >&2
+      return 1
+    fi
+    [ "$(git -C "$work" rev-list --count HEAD)" = 3 ]
+    git -C "$work" branch -q --unset-upstream
+    if UU_CAPTURE="$capture" zsh -f -c 'source "$1"; uu' _ "$custom/uu.zsh" 2>/dev/null; then
+      echo "uu ran without an upstream" >&2
+      return 1
+    fi
+    [ ! -e "$capture" ]
+
+    # Homebrew add-ons load from HOMEBREW_PREFIX, so an Intel /usr/local prefix works too.
+    fake_brew="$test_root/brew"
+    mkdir -p "$fake_brew/bin" "$fake_brew/etc/profile.d" \
+      "$fake_brew/opt/zsh-fast-syntax-highlighting/share/zsh-fast-syntax-highlighting"
+    printf '#!/bin/sh\n' >"$fake_brew/bin/brew"
+    chmod +x "$fake_brew/bin/brew"
+    printf 'typeset -g CHECK_AUTOJUMP=1\n' >"$fake_brew/etc/profile.d/autojump.sh"
+    printf 'typeset -g CHECK_FSH=1\n' \
+      >"$fake_brew/opt/zsh-fast-syntax-highlighting/share/zsh-fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh"
+    HOME="$test_root/home" HOMEBREW_PREFIX="$fake_brew" zsh -f -c '
+      source config/zsh/custom.zsh
+      [[ "$CHECK_AUTOJUMP" = 1 && "$CHECK_FSH" = 1 && -z "${_dot_configs_brew_prefix+x}" ]]
+    '
+
+    # Old Feature-Crew script files go only after Claude Code lists the plugin enabled.
+    fake_bin="$test_root/bin"
+    test_home="$test_root/fc-home"
+    claude_dir="$test_home/.claude"
+    mkdir -p "$fake_bin" "$claude_dir/agents" "$claude_dir/skills/fc-review" \
+      "$claude_dir/skills/update-settings" "$claude_dir/skills/fc-mine"
+    printf '#!/bin/sh\nprintf "%%s\\n" "$CHECK_PLUGINS"\n' >"$fake_bin/claude"
+    chmod +x "$fake_bin/claude"
+    : >"$claude_dir/agents/fc-pm.md"
+    : >"$claude_dir/agents/my-agent.md"
+    : >"$claude_dir/feature-crew.sha256"
+    (
+      export HOME="$test_home" PATH="$fake_bin:$PATH"
+      DOT_CONFIGS_INSTALL_LIB_ONLY=1 source install.sh
+      CHECK_PLUGINS='[{"id":"feature-crew@feature-crew","enabled":false}]' cleanup_legacy_feature_crew >/dev/null
+      [ -e "$claude_dir/agents/fc-pm.md" ]
+      [ -d "$claude_dir/skills/fc-review" ]
+      CHECK_PLUGINS='[{"id":"feature-crew@feature-crew","enabled":true}]' cleanup_legacy_feature_crew >/dev/null
+      [ ! -e "$claude_dir/agents/fc-pm.md" ]
+      [ ! -e "$claude_dir/skills/fc-review" ]
+      [ ! -e "$claude_dir/feature-crew.sha256" ]
+      [ -e "$claude_dir/agents/my-agent.md" ]
+      [ -d "$claude_dir/skills/update-settings" ]
+      [ -d "$claude_dir/skills/fc-mine" ]
+
+      # A linked skills folder belongs to someone else: leave it alone.
+      mkdir -p "$test_root/shared-skills/fc-debug"
+      rm -rf "$claude_dir/skills"
+      ln -s "$test_root/shared-skills" "$claude_dir/skills"
+      CHECK_PLUGINS='[{"id":"feature-crew@feature-crew","enabled":true}]' cleanup_legacy_feature_crew >/dev/null
+      [ -d "$test_root/shared-skills/fc-debug" ]
+    )
+  )
+}
+
+# A fork or private overlay validates its local/manifest.tsv here and may add
+# its own checks in local/check.sh. Upstream has no overlay, so this is a no-op.
+run_local_checks() {
+  (
+    DOT_CONFIGS_INSTALL_LIB_ONLY=1 source install.sh
+    validate_local_overlay
+    if [ -f "$local_root/check.sh" ]; then
+      echo "local checks: $local_root/check.sh"
+      DOT_CONFIGS_LOCAL="$local_root" bash "$local_root/check.sh"
+    fi
+  )
+}
+
+run_local_overlay_smoke() {
+  (
+    local test_root overlay home custom out origin seed work
+    test_root="$(mktemp -d)"
+    trap 'rm -rf "$test_root"' EXIT
+    overlay="$test_root/overlay"
+    home="$test_root/home"
+    custom="$home/.oh-my-zsh/custom"
+    mkdir -p "$overlay/zsh" "$overlay/config" "$custom"
+    printf 'alias hi=echo\n' >"$overlay/zsh/aliases.zsh"
+    printf 'x\n' >"$overlay/config/tool.conf"
+    printf '# type\tsource\tdestination\nlink\tconfig/tool.conf\t.config/tool/tool.conf' >"$overlay/manifest.tsv"
+    printf 'echo fork-check-ran\n' >"$overlay/check.sh"
+
+    export HOME="$home" DOT_CONFIGS_LOCAL="$overlay"
+    DOT_CONFIGS_INSTALL_LIB_ONLY=1 source install.sh
+
+    # A valid overlay links its rows and zsh files; a rerun changes nothing.
+    validate_local_overlay
+    link_local_overlay >/dev/null
+    link_local_overlay >/dev/null
+    [ "$(readlink "$home/.config/tool/tool.conf")" = "$overlay/config/tool.conf" ]
+    [ "$(readlink "$custom/zzz-local-aliases.zsh")" = "$overlay/zsh/aliases.zsh" ]
+    [ -z "$(find "$home" -name '*.bak.*' -print)" ]
+
+    # oh-my-zsh loads zzz-local-* after every upstream helper.
+    : >"$custom/zz-tmux.zsh"
+    [ "$(zsh -f -c 'files=("$1"/*.zsh); print -r -- "${files[-1]:t}"' _ "$custom")" = "zzz-local-aliases.zsh" ]
+
+    # Rows that are unsafe, clash with upstream, or use reserved names fail.
+    for row in \
+      $'merge\tconfig/tool.conf\t.config/tool/x.json' \
+      $'link\t../escape\t.config/x' \
+      $'link\t/etc/hosts\t.config/x' \
+      $'link\tconfig/tool.conf\t../x' \
+      $'link\tconfig/missing.conf\t.config/x' \
+      $'link\tconfig/tool.conf\t.tmux.conf' \
+      $'link\tconfig/tool.conf\t.oh-my-zsh/custom/zzz-local-x.zsh' \
+      $'link\tconfig/tool.conf\t.config/tool/tool.conf\nlink\tconfig/tool.conf\t.config/tool/tool.conf'; do
+      printf '%s\n' "$row" >"$overlay/manifest.tsv"
+      if validate_local_overlay 2>/dev/null; then
+        echo "local manifest accepted: $row" >&2
+        return 1
+      fi
+    done
+    if DOT_CONFIGS_LOCAL=relative/path validate_local_overlay 2>/dev/null; then
+      echo "relative DOT_CONFIGS_LOCAL accepted" >&2
+      return 1
+    fi
+
+    # A removed local zsh file drops its link; a user's own link stays.
+    rm -f "$overlay/manifest.tsv" "$overlay/zsh/aliases.zsh"
+    ln -s "$test_root/elsewhere.zsh" "$custom/my-link.zsh"
+    printf 'mine\n' >"$custom/zzz-local-mine.zsh"
+    link_local_overlay >/dev/null
+    [ ! -L "$custom/zzz-local-aliases.zsh" ]
+    [ -L "$custom/my-link.zsh" ]
+    [ -f "$custom/zzz-local-mine.zsh" ]
+
+    # The fork's check hook runs, and its failure fails the check.
+    out="$(run_local_checks)"
+    printf '%s\n' "$out" | grep -Fq 'fork-check-ran'
+    printf 'exit 3\n' >"$overlay/check.sh"
+    if run_local_checks >/dev/null 2>&1; then
+      echo "failing local check passed" >&2
+      return 1
+    fi
+
+    # uu also fast-forwards an overlay that is its own Git repo.
+    export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+    export GIT_AUTHOR_NAME=check GIT_AUTHOR_EMAIL=check@example.com
+    export GIT_COMMITTER_NAME=check GIT_COMMITTER_EMAIL=check@example.com
+    unset DOT_CONFIGS_DIR
+    for name in main overlay; do
+      git init -q --bare -b main "$test_root/$name.git"
+      git init -q -b main "$test_root/$name-seed"
+    done
+    mkdir -p "$test_root/main-seed/config/zsh"
+    cp config/zsh/uu.zsh "$test_root/main-seed/config/zsh/uu.zsh"
+    printf '#!/usr/bin/env bash\necho installed >"$UU_CAPTURE"\n' >"$test_root/main-seed/install.sh"
+    chmod +x "$test_root/main-seed/install.sh"
+    printf 'one\n' >"$test_root/overlay-seed/notes.txt"
+    for name in main overlay; do
+      seed="$test_root/$name-seed"
+      git -C "$seed" add -A
+      git -C "$seed" commit -q -m first
+      git -C "$seed" push -q "$test_root/$name.git" main
+      git clone -q "$test_root/$name.git" "$test_root/$name-work"
+    done
+    work="$test_root/main-work"
+    seed="$test_root/overlay-seed"
+    printf 'two\n' >>"$seed/notes.txt"
+    git -C "$seed" commit -q -am overlay-second
+    git -C "$seed" push -q "$test_root/overlay.git" main
+    UU_CAPTURE="$test_root/cap" DOT_CONFIGS_LOCAL="$test_root/overlay-work" \
+      zsh -f -c 'source "$1"; uu' _ "$work/config/zsh/uu.zsh" >/dev/null
+    [ "$(git -C "$test_root/overlay-work" rev-parse HEAD)" = "$(git -C "$seed" rev-parse HEAD)" ]
+    [ -f "$test_root/cap" ]
+
+    # A dirty overlay stops uu before either checkout moves.
+    rm -f "$test_root/cap"
+    printf 'dirty\n' >>"$test_root/overlay-work/notes.txt"
+    if UU_CAPTURE="$test_root/cap" DOT_CONFIGS_LOCAL="$test_root/overlay-work" \
+        zsh -f -c 'source "$1"; uu' _ "$work/config/zsh/uu.zsh" >/dev/null 2>&1; then
+      echo "uu ran with a dirty overlay" >&2
+      return 1
+    fi
+    [ ! -e "$test_root/cap" ]
+
+    # An untracked local/ folder in an upstream clone does not block uu.
+    git -C "$test_root/overlay-work" checkout -q -- notes.txt
+    mkdir -p "$work/local/zsh"
+    printf 'x\n' >"$work/local/zsh/mine.zsh"
+    UU_CAPTURE="$test_root/cap" DOT_CONFIGS_LOCAL= \
+      zsh -f -c 'unset DOT_CONFIGS_LOCAL; source "$1"; uu' _ "$work/config/zsh/uu.zsh" >/dev/null
+    [ -f "$test_root/cap" ]
+  )
+}
+
 run_smoke() {
   run_bash_syntax
   run_apollo_smoke
@@ -2056,6 +2313,9 @@ run_smoke() {
   run_retired_config_migration_smoke
   run_rmux_smoke
   run_tmux_smoke
+  run_shell_update_smoke
+  run_local_overlay_smoke
+  run_local_checks
 }
 
 case "${1:-all}" in
@@ -2068,10 +2328,12 @@ case "${1:-all}" in
   wiki) run_wiki_smoke; run_pipeline_scripts_smoke; run_rmux_keymap_docs_smoke ;;
   rmux) run_rmux_helpers_smoke; run_rmux_store_tests; run_rmux_keymap_docs_smoke; run_retired_config_migration_smoke; run_rmux_smoke ;;
   tmux) run_tmux_smoke ;;
+  shell) run_shell_update_smoke; run_local_overlay_smoke ;;
+  local) run_local_checks ;;
   shellcheck) run_shellcheck ;;
   all) run_smoke; run_shellcheck ;;
   *)
-    echo "usage: $0 [smoke|apollo|apollo-online|instructions|models|mcp|wiki|rmux|tmux|shellcheck|all]" >&2
+    echo "usage: $0 [smoke|apollo|apollo-online|instructions|models|mcp|wiki|rmux|tmux|shell|local|shellcheck|all]" >&2
     exit 2
     ;;
 esac

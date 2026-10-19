@@ -5,6 +5,10 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 config_root="${repo_root}/config"
 scripts_root="${repo_root}/scripts"
 manifest="${config_root}/manifest.tsv"
+# A fork or private overlay keeps its own files here. Upstream never tracks
+# local/, so these files never conflict with an upstream merge.
+local_root="${DOT_CONFIGS_LOCAL:-${repo_root}/local}"
+local_manifest="${local_root}/manifest.tsv"
 timestamp="$(date +"%Y%m%d%H%M%S")"
 install_log="${DOT_CONFIGS_INSTALL_LOG:-${HOME}/Library/Logs/dot-configs-install.log}"
 source "${scripts_root}/apollo-theme.sh"
@@ -629,6 +633,39 @@ ensure_feature_crew_plugin() {
   done
 }
 
+# An old script install of Feature-Crew put fc-* agents and skills in
+# ~/.claude, where they shadow the plugin. Remove those exact names once Claude
+# Code lists the plugin enabled; leave linked folders and other files alone.
+cleanup_legacy_feature_crew() {
+  local claude_dir="${HOME}/.claude" name path
+  local agents="fc-architect fc-developer fc-pm fc-qa-code fc-qa-spec fc-tech-lead"
+  local skills="fc-brainstorm fc-build-or-fix fc-debug fc-explain fc-grill-me fc-research fc-review fc-second-opinion fc-ship fc-update"
+  have_cmd claude && have_cmd jq || return 0
+  claude plugin list --json 2>/dev/null \
+    | jq -e 'any(.[]; .id == "feature-crew@feature-crew" and .enabled == true)' >/dev/null || return 0
+
+  if [ ! -L "${claude_dir}/agents" ]; then
+    for name in $agents; do
+      path="${claude_dir}/agents/${name}.md"
+      if [ -e "$path" ] || [ -L "$path" ]; then
+        rm -rf "$path" && echo "Removed old Feature-Crew file: $path"
+      fi
+    done
+  fi
+  if [ ! -L "${claude_dir}/skills" ]; then
+    for name in $skills; do
+      path="${claude_dir}/skills/${name}"
+      if [ -e "$path" ] || [ -L "$path" ]; then
+        rm -rf "$path" && echo "Removed old Feature-Crew skill: $path"
+      fi
+    done
+  fi
+  path="${claude_dir}/feature-crew.sha256"
+  if [ -e "$path" ] || [ -L "$path" ]; then
+    rm -f "$path" && echo "Removed old Feature-Crew file: $path"
+  fi
+}
+
 cleanup_legacy_wakatime_mcp() {
   local wm_dest="${HOME}/.local/share/wakatime-mcp"
   local copilot_mcp_pre="${HOME}/.config/github-copilot/mcp.json"
@@ -855,6 +892,96 @@ validate_manifest() {
     esac
     seen_destinations="${seen_destinations}${seen_destinations:+$'\n'}${destination}"
   done <"$manifest"
+}
+
+# local/manifest.tsv takes link rows only. Sources are relative to the
+# overlay; destinations may not reuse an upstream destination or the reserved
+# zzz-local-* zsh names.
+validate_local_overlay() {
+  local type source destination extra upstream_destinations
+  local seen_destinations=""
+
+  if [ -n "${DOT_CONFIGS_LOCAL:-}" ]; then
+    case "$DOT_CONFIGS_LOCAL" in
+      /*) ;;
+      *) echo "Error: DOT_CONFIGS_LOCAL must be an absolute path: $DOT_CONFIGS_LOCAL" >&2; return 1 ;;
+    esac
+    [ -d "$local_root" ] || {
+      echo "Error: DOT_CONFIGS_LOCAL folder not found: $local_root" >&2
+      return 1
+    }
+  fi
+  [ -f "$local_manifest" ] || return 0
+
+  upstream_destinations="$(grep -Ev '^(#|$)' "$manifest" | cut -f3)"
+  while IFS=$'\t' read -r type source destination extra || [ -n "$type" ]; do
+    case "$type" in
+      ''|'#'*) continue ;;
+      link) ;;
+      *) echo "Error: local manifest supports only link rows, not '$type'" >&2; return 1 ;;
+    esac
+    [ -z "$extra" ] || {
+      echo "Error: local manifest row has more than three fields: $source" >&2
+      return 1
+    }
+    [ -n "$source" ] && [ -n "$destination" ] || {
+      echo "Error: incomplete local manifest row" >&2
+      return 1
+    }
+    case "$source" in
+      /*|*'..'*) echo "Error: unsafe local manifest source: $source" >&2; return 1 ;;
+    esac
+    case "$destination" in
+      /*|*'..'*) echo "Error: unsafe local manifest destination: $destination" >&2; return 1 ;;
+      .oh-my-zsh/custom/zzz-local-*)
+        echo "Error: $destination is reserved for local/zsh/*.zsh" >&2
+        return 1
+        ;;
+    esac
+    [ -f "${local_root}/${source}" ] || {
+      echo "Error: missing local manifest source: ${local_root}/${source}" >&2
+      return 1
+    }
+    case $'\n'"${upstream_destinations}"$'\n' in
+      *$'\n'"${destination}"$'\n'*)
+        echo "Error: local manifest destination is managed upstream: $destination" >&2
+        return 1
+        ;;
+    esac
+    case $'\n'"${seen_destinations}"$'\n' in
+      *$'\n'"${destination}"$'\n'*) echo "Error: duplicate local manifest destination: $destination" >&2; return 1 ;;
+    esac
+    seen_destinations="${seen_destinations}${seen_destinations:+$'\n'}${destination}"
+  done <"$local_manifest"
+}
+
+# Link local/manifest.tsv rows, then local/zsh/*.zsh as zzz-local-NAME.zsh so
+# oh-my-zsh loads them after every upstream helper.
+link_local_overlay() {
+  local type source destination extra file dest name
+  local custom="${HOME}/.oh-my-zsh/custom"
+
+  # zzz-local-* links belong to the overlay: drop any that no longer match it.
+  for dest in "${custom}"/zzz-local-*.zsh; do
+    [ -L "$dest" ] || continue
+    name="${dest##*/zzz-local-}"
+    if [ "$(readlink "$dest")" != "${local_root}/zsh/${name}" ] || [ ! -f "${local_root}/zsh/${name}" ]; then
+      rm -f "$dest" && echo "Removed old local link: $dest"
+    fi
+  done
+  [ -d "$local_root" ] || return 0
+
+  if [ -f "$local_manifest" ]; then
+    while IFS=$'\t' read -r type source destination extra || [ -n "$type" ]; do
+      [ "$type" = "link" ] || continue
+      link_file "${local_root}/${source}" "${HOME}/${destination}"
+    done <"$local_manifest"
+  fi
+  for file in "${local_root}"/zsh/*.zsh; do
+    [ -f "$file" ] || continue
+    link_file "$file" "${custom}/zzz-local-${file##*/}"
+  done
+  echo "Linked local overlay from $local_root"
 }
 
 manifest_source_for_destination() {
@@ -1134,8 +1261,10 @@ else
 fi
 
 validate_manifest
+validate_local_overlay
 install_apollo_themes
 link_manifest_files
+link_local_overlay
 # RMUX is Windows-only. Keep retention while an older macOS install remains.
 if is_macos && have_cmd python3 && have_cmd rmux; then
   log_command python3 -B "${scripts_root}/rmux/store.py" prepare || {
@@ -1203,6 +1332,7 @@ ensure_copilot_wakatime_plugin
 
 # Feature-Crew: one plugin for Claude Code and Copilot CLI.
 ensure_feature_crew_plugin
+cleanup_legacy_feature_crew
 
 # Import Copilot's merged MCP server map into Claude Code's local state file.
 copilot_mcp="${HOME}/.config/github-copilot/mcp.json"
